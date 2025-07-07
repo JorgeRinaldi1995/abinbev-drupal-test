@@ -1,0 +1,7 @@
+name: 'Voting System'
+type: module
+description: 'Provides a custom voting system for questions and answers.'
+core_version_requirement: ^10
+package: Custom
+dependencies:
+  - user

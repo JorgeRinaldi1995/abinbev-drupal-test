@@ -1,0 +1,4 @@
+services:
+  voting_system.vote_service:
+    class: Drupal\voting_system\Service\VoteService
+    arguments: []

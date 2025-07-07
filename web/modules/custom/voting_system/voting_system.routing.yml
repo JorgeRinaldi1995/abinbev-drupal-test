@@ -1,0 +1,104 @@
+entity.voting_question.collection:
+  path: '/admin/voting-question'
+  defaults:
+    _entity_list: 'voting_question'
+    _title: 'Voting Questions'
+  requirements:
+    _permission: 'administer voting questions'
+
+entity.voting_question.edit_form:
+  path: '/admin/voting-question/{voting_question}/edit'
+  defaults:
+    _entity_form: 'voting_question.edit'
+    _title: 'Edit Voting Question'
+  requirements:
+    _entity_access: 'voting_question.update'
+
+entity.voting_question.delete_form:
+  path: '/admin/voting-question/{voting_question}/delete'
+  defaults:
+    _entity_form: voting_question.delete
+    _title: 'Delete Voting Questions'
+  requirements:
+    _entity_access: 'voting_question.delete'
+
+entity.voting_question.add_form:
+  path: '/admin/voting-question/add'
+  defaults:
+    _entity_form: 'voting_question.add'
+    _title: 'Add Voting Question'
+  requirements:
+    _permission: 'administer voting questions'
+
+entity.voting_question.canonical:
+  path: '/admin/voting-question/{voting_question}'
+  defaults:
+    _entity_view: 'voting_question'
+    _title_callback: '\Drupal\Core\Entity\Controller\EntityController::title'
+  requirements:
+    _entity_access: 'voting_question.view'
+
+entity.voting_answer.collection:
+  path: '/admin/voting-answer'
+  defaults:
+    _entity_list: 'voting_answer'
+    _title: 'Voting Answers'
+  requirements:
+    _permission: 'administer voting answers'
+
+entity.voting_answer.edit_form:
+  path: '/admin/voting-answer/{voting_answer}/edit'
+  defaults:
+    _entity_form: 'voting_answer.edit'
+    _title: 'Edit Voting Question'
+  requirements:
+    _entity_access: 'voting_answer.update'
+
+entity.voting_answer.delete_form:
+  path: '/admin/voting-answer/{voting_answer}/delete'
+  defaults:
+    _entity_form: voting_answer.delete
+    _title: 'Delete Voting Questions'
+  requirements:
+    _entity_access: 'voting_answer.delete'
+
+entity.voting_answer.add_form:
+  path: '/admin/voting-answer/add'
+  defaults:
+    _entity_form: 'voting_answer.add'
+    _title: 'Add Voting Answer'
+  requirements:
+    _permission: 'administer voting answers'
+
+entity.voting_answer.canonical:
+  path: '/admin/voting-answer/{voting_answer}'
+  defaults:
+    _entity_view: 'voting_answer'
+    _title_callback: '\Drupal\Core\Entity\Controller\EntityController::title'
+  requirements:
+    _entity_access: 'voting_answer.view'
+
+voting_system.api_get_question:
+  path: '/api/vote/question/{id}'
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiController::getQuestion'
+    _title: 'Get Voting Question'
+  requirements:
+    _permission: 'access content'
+
+voting_system.api_post_vote:
+  path: '/api/vote/question/{id}'
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiController::postVote'
+    _title: 'Submit Vote'
+  methods: [POST]
+  requirements:
+    _permission: 'access content'
+
+voting_system.api_get_results:
+  path: '/api/vote/results/{id}'
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiController::getResults'
+    _title: 'Get Results'
+  requirements:
+    _permission: 'access content'

@@ -1,0 +1,19 @@
+voting_question:
+  type: entity
+  label: 'Voting Question'
+  mapping:
+    title:
+      type: string
+      label: 'Question title'
+    question_id:
+      type: string
+      label: 'Unique identifier'
+    show_results:
+      type: boolean
+      label: 'Show results after voting'
+    status:
+      type: boolean
+      label: 'Active/Inactive'
+    created:
+      type: integer
+      label: 'Created timestamp'

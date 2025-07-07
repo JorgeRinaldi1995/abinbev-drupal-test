@@ -1,0 +1,100 @@
+<?php
+
+use Drupal\Core\Database\SchemaObjectExistsException;
+
+/**
+ * Implements hook_schema().
+ */
+function voting_system_schema() {
+  $schema['voting_question'] = [
+    'description' => 'Stores voting questions.',
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'not null' => TRUE,
+      ],
+      'uuid' => [
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+      ],
+      'title' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ],
+      'question_id' => [
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'description' => 'Unique question identifier.',
+      ],
+      'show_results' => [
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 1,
+      ],
+      'status' => [
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 1,
+      ],
+      'created' => [
+        'type' => 'int',
+        'not null' => TRUE,
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'uuid' => ['uuid'],
+      'question_id' => ['question_id'],
+    ],
+  ];
+
+    $schema['voting_answer'] = [
+    'description' => 'Stores answers for each question.',
+    'fields' => [
+      'id' => ['type' => 'serial', 'not null' => TRUE],
+      'uuid' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE],
+      'title' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE],
+      'description' => ['type' => 'text', 'not null' => FALSE],
+      'image' => ['type' => 'varchar', 'length' => 255, 'not null' => FALSE],
+      'question_id' => ['type' => 'int', 'not null' => TRUE],
+      'vote_count' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+      'created' => ['type' => 'int', 'not null' => TRUE],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => ['uuid' => ['uuid']],
+    'indexes' => ['question_id' => ['question_id']],
+  ];
+
+  $schema['vote_record'] = [
+  'description' => 'Tracks user votes.',
+  'fields' => [
+    'id' => ['type' => 'serial', 'not null' => TRUE],
+    'uuid' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE],
+    'user_id' => ['type' => 'int', 'not null' => TRUE],
+    'question_id' => ['type' => 'int', 'not null' => TRUE],
+    'answer_id' => ['type' => 'int', 'not null' => TRUE],
+    'created' => ['type' => 'int', 'not null' => TRUE],
+  ],
+  'primary key' => ['id'],
+  'unique keys' => [
+    'uuid' => ['uuid'],
+    'user_vote' => ['user_id', 'question_id'],
+  ],
+];
+
+
+  return $schema;
+}
+
+/**
+ * Install schema for vote_record entity manually.
+ */
+function voting_system_update_9001() {
+  \Drupal::entityDefinitionUpdateManager()
+    ->installEntityType(\Drupal::entityTypeManager()->getDefinition('vote_record'));
+}
