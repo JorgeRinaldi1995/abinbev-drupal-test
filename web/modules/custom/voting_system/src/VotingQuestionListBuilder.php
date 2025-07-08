@@ -15,6 +15,8 @@ class VotingQuestionListBuilder extends EntityListBuilder {
     $header['title'] = $this->t('Title');
     $header['question_id'] = $this->t('Question ID');
     $header['status'] = $this->t('Status');
+    $header['show_percent'] = $this->t('Show Percent');
+
     return $header + parent::buildHeader();
   }
 
@@ -28,6 +30,7 @@ class VotingQuestionListBuilder extends EntityListBuilder {
     $row['title'] = $entity->toLink();
     $row['question_id'] = $entity->get('question_id')->value;
     $row['status'] = $entity->get('status')->value ? $this->t('Active') : $this->t('Inactive');
+    $row['show_percent'] = $entity->get('show_percent')->value ? $this->t('Yes') : $this->t('No');
 
     return $row + parent::buildRow($entity); // <- This ensures operations column is included
     }

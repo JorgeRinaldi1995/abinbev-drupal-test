@@ -2,6 +2,7 @@
 /drush/contrib/
 /vendor/
 /web/core/
+/web/core/*
 /web/modules/contrib/
 /web/themes/contrib/
 /web/profiles/contrib/
@@ -27,3 +28,5 @@
 drush/sites/.checksums
 
 /.ddev/
+
+prompt.md

@@ -1,0 +1,6 @@
+voting_system.results_page:
+  title: 'Voting Results'
+  description: 'View voting results per question.'
+  parent: system.admin_content
+  route_name: voting_system.results_page
+  weight: 100

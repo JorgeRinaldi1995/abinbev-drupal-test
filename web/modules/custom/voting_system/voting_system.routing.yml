@@ -78,6 +78,14 @@ entity.voting_answer.canonical:
   requirements:
     _entity_access: 'voting_answer.view'
 
+voting_system.results_page:
+  path: '/admin/voting-results'
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\VotingResultsController::resultsPage'
+    _title: 'Voting Results'
+  requirements:
+    _permission: 'administer vote records'
+
 voting_system.api_get_question:
   path: '/api/vote/question/{id}'
   defaults:

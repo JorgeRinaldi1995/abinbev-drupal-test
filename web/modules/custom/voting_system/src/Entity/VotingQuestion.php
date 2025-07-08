@@ -63,10 +63,15 @@ class VotingQuestion extends ContentEntityBase implements EntityOwnerInterface {
       ->setSettings(['max_length' => 64])
       ->setDisplayOptions('form', ['type' => 'string_textfield']);
 
-    $fields['show_results'] = BaseFieldDefinition::create('boolean')
-      ->setLabel(t('Show Results to Users'))
-      ->setDefaultValue(TRUE)
-      ->setDisplayOptions('form', ['type' => 'boolean_checkbox']);
+    $fields['show_percent'] = BaseFieldDefinition::create('boolean')
+        ->setLabel(t('Show vote percentage after voting'))
+        ->setDefaultValue(TRUE)
+        ->setDisplayOptions('form', [
+            'type' => 'boolean_checkbox',
+            'weight' => 20,
+        ])
+        ->setDisplayConfigurable('form', TRUE)
+        ->setDisplayConfigurable('view', FALSE);
 
     $fields['status'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Active'))

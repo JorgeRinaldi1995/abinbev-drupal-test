@@ -55,7 +55,30 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
       ]);
 
     if (!empty($existing)) {
-      return ['#markup' => $this->t('You have already voted.')];
+        if ($question->get('show_percent')->value) {
+            $results = \Drupal::service('voting_system.vote_service')->getResults($question->id());
+
+            $header = [$this->t('Answer'), $this->t('Votes'), $this->t('Percent')];
+            $rows = [];
+
+            foreach ($results['answers'] as $answer) {
+            $rows[] = [
+                $answer['title'],
+                $answer['votes'],
+                $answer['percent'] . '%',
+            ];
+            }
+
+            return [
+                '#type' => 'table',
+                '#header' => $header,
+                '#rows' => $rows,
+                '#caption' => $this->t('Results for: @title', ['@title' => $question->label()]),
+            ];
+        }
+        else {
+            return ['#markup' => $this->t('You have already voted.')];
+        }
     }
 
     $answers = \Drupal::entityTypeManager()
