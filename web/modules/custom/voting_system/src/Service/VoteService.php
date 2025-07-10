@@ -23,12 +23,12 @@ class VoteService {
       throw new AccessDeniedHttpException('Voting is disabled for this question.');
     }
 
-   $existing = \Drupal::entityTypeManager()
-    ->getStorage('vote_record')
-    ->loadByProperties([
-      'user_id' => $account->id(),
-      'question_id' => $question->id(),
-    ]);
+    $existing = \Drupal::entityTypeManager()
+      ->getStorage('vote_record')
+      ->loadByProperties([
+        'user_id' => $account->id(),
+        'question_id' => $question->id(),
+      ]);
 
     if (!empty($existing)) {
         throw new AccessDeniedHttpException('You have already voted on this question.');
