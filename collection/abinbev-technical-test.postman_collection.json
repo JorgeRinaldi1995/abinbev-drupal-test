@@ -1,0 +1,238 @@
+{
+	"info": {
+		"_postman_id": "bdc687ba-334a-4742-acad-1c0d51efda95",
+		"name": "abinbev-technical-test",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "31494622"
+	},
+	"item": [
+		{
+			"name": "get-token",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "username",
+							"value": "admin",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "12345",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://my-drupal-site.ddev.site/oauth/token",
+					"protocol": "https",
+					"host": [
+						"my-drupal-site",
+						"ddev",
+						"site"
+					],
+					"path": [
+						"oauth",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "vote-on-question",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer 52fcb096faeed9ff0b285db5c6b45a744b0f7e1a11f0945cf827d8471146731d",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"answer_id\": 6}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://my-drupal-site.ddev.site/api/vote/2",
+					"protocol": "https",
+					"host": [
+						"my-drupal-site",
+						"ddev",
+						"site"
+					],
+					"path": [
+						"api",
+						"vote",
+						"2"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "create-question",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer 52fcb096faeed9ff0b285db5c6b45a744b0f7e1a11f0945cf827d8471146731d",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"answer_id\": 6}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://my-drupal-site.ddev.site/api/vote/2",
+					"protocol": "https",
+					"host": [
+						"my-drupal-site",
+						"ddev",
+						"site"
+					],
+					"path": [
+						"api",
+						"vote",
+						"2"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "create-answer",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer 52fcb096faeed9ff0b285db5c6b45a744b0f7e1a11f0945cf827d8471146731d",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"answer_id\": 6}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://my-drupal-site.ddev.site/api/vote/2",
+					"protocol": "https",
+					"host": [
+						"my-drupal-site",
+						"ddev",
+						"site"
+					],
+					"path": [
+						"api",
+						"vote",
+						"2"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get-vote-results",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer 7672dae80bd7e55df7d0adce9ad913affab7254989274171513892f6e5894300",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://my-drupal-site.ddev.site/api/vote-results/1",
+					"protocol": "https",
+					"host": [
+						"my-drupal-site",
+						"ddev",
+						"site"
+					],
+					"path": [
+						"api",
+						"vote-results",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get-questions",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer 52fcb096faeed9ff0b285db5c6b45a744b0f7e1a11f0945cf827d8471146731d",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://my-drupal-site.ddev.site/api/voting/questions",
+					"protocol": "https",
+					"host": [
+						"my-drupal-site",
+						"ddev",
+						"site"
+					],
+					"path": [
+						"api",
+						"voting",
+						"questions"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
