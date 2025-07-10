@@ -94,14 +94,6 @@ oauth_api.token:
   requirements:
     _access: 'TRUE'
 
-oauth_api.example:
-  path: '/api/example'
-  defaults:
-    _controller: '\Drupal\voting_system\Controller\ExampleApiController::data'
-  methods: [GET]
-  requirements:
-    _custom_access: '\Drupal\voting_system\Controller\ExampleApiController::access'
-
 voting_system.api.vote:
   path: '/api/vote/{question_id}'
   methods: [POST]
