@@ -117,3 +117,27 @@ voting_system.api.vote_results:
     _controller: '\Drupal\voting_system\Controller\ApiVoteController::getResults'
   requirements:
     _custom_access: '\Drupal\voting_system\Controller\ApiVoteController::access'
+
+voting_system.api.questions:
+  path: '/api/voting/questions'
+  methods: [GET]
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::listActiveQuestions'
+  requirements:
+    _custom_access: '\Drupal\voting_system\Controller\ApiManageVotingController::access'
+
+voting_system.api.create_question:
+  path: '/api/voting/question'
+  methods: [POST]
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::createQuestion'
+  requirements:
+    _custom_access: '\Drupal\voting_system\Controller\ApiManageVotingController::adminAccess'
+
+voting_system.api.create_answer:
+  path: '/api/voting/answer'
+  methods: [POST]
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::createAnswer'
+  requirements:
+    _custom_access: '\Drupal\voting_system\Controller\ApiManageVotingController::adminAccess'
