@@ -2,3 +2,5 @@ services:
   voting_system.vote_service:
     class: Drupal\voting_system\Service\VoteService
     arguments: []
+  voting_system.token_service:
+    class: 'Drupal\voting_system\Service\TokenService'

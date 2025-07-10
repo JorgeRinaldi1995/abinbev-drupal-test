@@ -86,27 +86,34 @@ voting_system.results_page:
   requirements:
     _permission: 'administer vote records'
 
-voting_system.api_get_question:
-  path: '/api/vote/question/{id}'
+oauth_api.token:
+  path: '/oauth/token'
   defaults:
-    _controller: '\Drupal\voting_system\Controller\ApiController::getQuestion'
-    _title: 'Get Voting Question'
-  requirements:
-    _permission: 'access content'
-
-voting_system.api_post_vote:
-  path: '/api/vote/question/{id}'
-  defaults:
-    _controller: '\Drupal\voting_system\Controller\ApiController::postVote'
-    _title: 'Submit Vote'
+    _controller: '\Drupal\voting_system\Controller\TokenController::getToken'
   methods: [POST]
   requirements:
-    _permission: 'access content'
+    _access: 'TRUE'
 
-voting_system.api_get_results:
-  path: '/api/vote/results/{id}'
+oauth_api.example:
+  path: '/api/example'
   defaults:
-    _controller: '\Drupal\voting_system\Controller\ApiController::getResults'
-    _title: 'Get Results'
+    _controller: '\Drupal\voting_system\Controller\ExampleApiController::data'
+  methods: [GET]
   requirements:
-    _permission: 'access content'
+    _custom_access: '\Drupal\voting_system\Controller\ExampleApiController::access'
+
+voting_system.api.vote:
+  path: '/api/vote/{question_id}'
+  methods: [POST]
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiVoteController::submitVote'
+  requirements:
+    _custom_access: '\Drupal\voting_system\Controller\ApiVoteController::access'
+
+voting_system.api.vote_results:
+  path: '/api/vote-results/{question_id}'
+  methods: [GET]
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiVoteController::getResults'
+  requirements:
+    _custom_access: '\Drupal\voting_system\Controller\ApiVoteController::access'
