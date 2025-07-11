@@ -9,6 +9,7 @@ You can find a collection [here](https://github.com/JorgeRinaldi1995/abinbev-dru
 User for test:
 
 login: auth_user
+
 password: 12345
 
 ## Steps to setup the environment
