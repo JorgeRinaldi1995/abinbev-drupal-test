@@ -1,0 +1,5 @@
+name: my-lando-app
+recipe: drupal10
+config:
+  webroot: web
+  php: '8.3'
