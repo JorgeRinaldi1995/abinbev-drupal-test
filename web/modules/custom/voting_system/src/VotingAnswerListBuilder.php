@@ -20,15 +20,21 @@ class VotingAnswerListBuilder extends EntityListBuilder {
   /**
    * {@inheritdoc}
    */
-    public function buildRow(EntityInterface $entity): array {
-    /** @var \Drupal\voting_system\Entity\VotingQuestion $entity */
+  public function buildRow(EntityInterface $entity): array {
+    /** @var \Drupal\voting_system\Entity\VotingAnswer $entity */
 
     $row = [];
-    $row['title'] = $entity->toLink();
-    $row['question_id'] = $entity->get('question_id')->value;
 
-    return $row + parent::buildRow($entity); // <- This ensures operations column is included
-    }
+    // Show VotingAnswer title as a link to the entity
+    $row['title'] = $entity->toLink();
+
+    // Get related VotingQuestion
+    /** @var \Drupal\voting_system\Entity\VotingQuestion $question */
+    $question = $entity->get('question_id')->entity;
+    $row['question_id'] = $question ? $question->label() : $this->t('No question');
+
+    return $row + parent::buildRow($entity); // Include operations column
+  }
   /**
    * {@inheritdoc}
    */

@@ -7,7 +7,6 @@ use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\user\EntityOwnerInterface;
 use Drupal\user\EntityOwnerTrait;
-use Drupal\user\UserInterface;
 
 /**
  * Defines the Voting Question entity.
