@@ -4,6 +4,13 @@ This test was made for a drupal developer position at abinbev.
 
 The file you are looking for is [here](https://github.com/JorgeRinaldi1995/abinbev-drupal-test/tree/main/web/modules/custom/voting_system) 
 
+You can find a collection [here](https://github.com/JorgeRinaldi1995/abinbev-drupal-test/tree/main/collection) 
+
+User for test:
+
+login: auth_user
+password: 12345
+
 ## Steps to setup the environment
 
 On main folder run the following comands:
@@ -27,11 +34,6 @@ lando drush cr
 ```
 lando db-import dump.sql.gz
 ```
-
-User for test:
-
-login: auth_user
-password: 12345
 
 ## Simple Voting System Test
 
