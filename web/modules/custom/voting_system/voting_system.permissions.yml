@@ -1,0 +1,14 @@
+administer voting questions:
+  title: 'Administer voting questions'
+  description: 'Permite gerenciar perguntas de votação'
+  restrict access: true
+
+administer voting answers:
+  title: 'Administer voting answers'
+  description: 'Permite gerenciar respostas de votação'
+  restrict access: true
+
+administer vote records:
+  title: 'Administer voting results'
+  description: 'Permite ver os resultados de votação'
+  restrict access: true

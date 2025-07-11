@@ -1,6 +1,25 @@
-voting_system.results_page:
+voting_system.admin_menu:
+  title: 'Voting System'
+  description: 'Gerencie perguntas, respostas e resultados de votação'
+  route_name: entity.voting_question.collection
+  parent: system.admin
+  weight: 50
+  menu_name: admin
+
+voting_system.question_menu:
+  title: 'Voting Questions'
+  route_name: entity.voting_question.collection
+  parent: voting_system.admin_menu
+  weight: 0
+
+voting_system.answer_menu:
+  title: 'Voting Answers'
+  route_name: entity.voting_answer.collection
+  parent: voting_system.admin_menu
+  weight: 1
+
+voting_system.results_menu:
   title: 'Voting Results'
-  description: 'View voting results per question.'
-  parent: system.admin_content
   route_name: voting_system.results_page
-  weight: 100
+  parent: voting_system.admin_menu
+  weight: 2
