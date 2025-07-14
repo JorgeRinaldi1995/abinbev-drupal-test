@@ -36,11 +36,18 @@ class VoteForm extends FormBase {
     $this->options = $options;
 
     $form['answer_id'] = [
-      '#type' => 'radios',
+      '#type' => 'fieldset',
       '#title' => $this->t('Select an answer'),
-      '#options' => $options,
-      '#required' => TRUE,
     ];
+
+    foreach ($options as $id => $rendered_option) {
+      $form['answer_id'][$id] = [
+        '#type' => 'radio',
+        '#title' => $rendered_option, // ✅ This is safe
+        '#return_value' => $id,
+        '#parents' => ['answer_id'],
+      ];
+    }
 
     $form['submit'] = [
       '#type' => 'submit',
