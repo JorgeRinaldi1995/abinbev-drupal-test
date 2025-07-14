@@ -10,9 +10,32 @@ use Drupal\Core\Session\AccountProxyInterface;
 
 class VoteForm extends FormBase {
 
-  protected int $questionId;
+  /**
+   * The question ID to vote on.
+   *
+   * @var int|null
+   */
+  protected ?int $questionId;
+
+  /**
+   * The rendered options for the answers.
+   *
+   * @var array
+   */
   protected array $options;
+
+  /**
+   * The voting service.
+   *
+   * @var \Drupal\voting_system\Service\VoteService
+   */
   protected VoteService $voteService;
+
+  /**
+   * The current user.
+   *
+   * @var \Drupal\Core\Session\AccountProxyInterface
+   */
   protected AccountProxyInterface $currentUser;
 
   public function __construct(VoteService $voteService, AccountProxyInterface $currentUser) {
