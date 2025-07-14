@@ -1,0 +1,192 @@
+openapi: 3.0.3
+info:
+  title: API de Votação - Drupal
+  version: 1.0.0
+  description: API para gerenciar perguntas de votação, respostas e votos.
+
+servers:
+  - url: https://seusite.com
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    TokenRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+        expires_in:
+          type: integer
+
+    VoteRequest:
+      type: object
+      properties:
+        answer_id:
+          type: integer
+      required: [answer_id]
+
+    VoteResults:
+      type: object
+      properties:
+        question_id:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              answer_id:
+                type: integer
+              votes:
+                type: integer
+
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        active:
+          type: boolean
+
+    CreateQuestion:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+      required: [title]
+
+    CreateAnswer:
+      type: object
+      properties:
+        question_id:
+          type: integer
+        title:
+          type: string
+      required: [question_id, title]
+
+paths:
+  /oauth/token:
+    post:
+      summary: Solicita token de acesso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '200':
+          description: Token JWT gerado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  /api/vote/{question_id}:
+    post:
+      summary: Envia um voto para uma pergunta
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: question_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoteRequest'
+      responses:
+        '200':
+          description: Voto registrado
+        '401':
+          description: Não autorizado
+
+  /api/vote-results/{question_id}:
+    get:
+      summary: Consulta os resultados de uma pergunta
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: question_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Resultados retornados com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteResults'
+
+  /api/voting/questions:
+    get:
+      summary: Lista todas as perguntas ativas
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de perguntas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Question'
+
+  /api/voting/question:
+    post:
+      summary: Cria uma nova pergunta (Admin)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuestion'
+      responses:
+        '200':
+          description: Pergunta criada
+
+  /api/voting/answer:
+    post:
+      summary: Cria uma nova resposta (Admin)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAnswer'
+      responses:
+        '200':
+          description: Resposta criada
