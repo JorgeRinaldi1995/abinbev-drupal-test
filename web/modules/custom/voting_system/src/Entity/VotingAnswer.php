@@ -5,6 +5,7 @@ namespace Drupal\voting_system\Entity;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Entity\EntityChangedTrait;
 
 /**
  * Defines the Voting Answer entity.
@@ -25,7 +26,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *       "add" = "Drupal\Core\Entity\ContentEntityForm",
  *       "edit" = "Drupal\Core\Entity\ContentEntityForm",
  *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm"
- *     },
+ *     }
  *   },
  *   admin_permission = "administer voting answers",
  *   links = {
@@ -38,6 +39,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
  * )
  */
 class VotingAnswer extends ContentEntityBase {
+  use EntityChangedTrait;
 
   /**
    * {@inheritdoc}
@@ -49,11 +51,15 @@ class VotingAnswer extends ContentEntityBase {
       ->setLabel(t('Answer title'))
       ->setRequired(TRUE)
       ->setSettings(['max_length' => 255])
-      ->setDisplayOptions('form', ['type' => 'string_textfield']);
+      ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => 0])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
 
     $fields['description'] = BaseFieldDefinition::create('text_long')
       ->setLabel(t('Description'))
-      ->setDisplayOptions('form', ['type' => 'text_textarea']);
+      ->setDisplayOptions('form', ['type' => 'text_textarea', 'weight' => 1])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
 
     $fields['image'] = BaseFieldDefinition::create('image')
       ->setLabel(t('Answer Image'))
@@ -61,21 +67,32 @@ class VotingAnswer extends ContentEntityBase {
         'file_extensions' => 'png jpg jpeg',
         'alt_field_required' => FALSE,
       ])
-      ->setDisplayOptions('form', ['type' => 'image_image']);
+      ->setDisplayOptions('form', ['type' => 'image_image', 'weight' => 2])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
 
     $fields['question_id'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Related Question'))
       ->setSetting('target_type', 'voting_question')
       ->setRequired(TRUE)
-      ->setDisplayOptions('form', ['type' => 'options_select']);
+      ->setDisplayOptions('form', ['type' => 'options_select', 'weight' => 3])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
 
     $fields['vote_count'] = BaseFieldDefinition::create('integer')
       ->setLabel(t('Vote Count'))
+      ->setDescription(t('Number of votes received for this answer.'))
       ->setDefaultValue(0)
-      ->setReadOnly(TRUE);
+      ->setReadOnly(TRUE)
+      ->setDisplayConfigurable('view', TRUE);
 
     $fields['created'] = BaseFieldDefinition::create('created')
-      ->setLabel(t('Created'));
+      ->setLabel(t('Created'))
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['changed'] = BaseFieldDefinition::create('changed')
+      ->setLabel(t('Changed'))
+      ->setDisplayConfigurable('view', TRUE);
 
     return $fields;
   }

@@ -5,6 +5,7 @@ namespace Drupal\voting_system\Entity;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Entity\EntityChangedTrait;
 use Drupal\user\EntityOwnerInterface;
 use Drupal\user\EntityOwnerTrait;
 
@@ -19,6 +20,7 @@ use Drupal\user\EntityOwnerTrait;
  *     "id" = "id",
  *     "label" = "title",
  *     "uuid" = "uuid",
+ *     "owner" = "user_id"
  *   },
  *   handlers = {
  *     "list_builder" = "Drupal\voting_system\VotingQuestionListBuilder",
@@ -27,7 +29,7 @@ use Drupal\user\EntityOwnerTrait;
  *       "add" = "Drupal\Core\Entity\ContentEntityForm",
  *       "edit" = "Drupal\Core\Entity\ContentEntityForm",
  *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm"
- *     },
+ *     }
  *   },
  *   admin_permission = "administer voting questions",
  *   links = {
@@ -41,11 +43,18 @@ use Drupal\user\EntityOwnerTrait;
  */
 class VotingQuestion extends ContentEntityBase implements EntityOwnerInterface {
   use EntityOwnerTrait;
+  use EntityChangedTrait;
 
-  public static function getCurrentUserId() {
+  /**
+   * Default callback for user_id field.
+   */
+  public static function getCurrentUserId(): array {
     return [\Drupal::currentUser()->id()];
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public static function baseFieldDefinitions(EntityTypeInterface $entity_type): array {
     $fields = parent::baseFieldDefinitions($entity_type);
 
@@ -53,46 +62,46 @@ class VotingQuestion extends ContentEntityBase implements EntityOwnerInterface {
       ->setLabel(t('Question title'))
       ->setRequired(TRUE)
       ->setSettings(['max_length' => 255])
-      ->setDisplayOptions('view', ['label' => 'above', 'type' => 'string'])
-      ->setDisplayOptions('form', ['type' => 'string_textfield']);
+      ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => 0])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
 
     $fields['question_id'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Unique Question ID'))
       ->setRequired(TRUE)
       ->setSettings(['max_length' => 64])
-      ->setDisplayOptions('form', ['type' => 'string_textfield']);
+      ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => 1])
+      ->setDisplayConfigurable('form', TRUE);
 
     $fields['show_percent'] = BaseFieldDefinition::create('boolean')
-        ->setLabel(t('Show vote percentage after voting'))
-        ->setDefaultValue(TRUE)
-        ->setDisplayOptions('form', [
-            'type' => 'boolean_checkbox',
-            'weight' => 20,
-        ])
-        ->setDisplayConfigurable('form', TRUE)
-        ->setDisplayConfigurable('view', FALSE);
+      ->setLabel(t('Show vote percentage'))
+      ->setDefaultValue(TRUE)
+      ->setDisplayOptions('form', ['type' => 'boolean_checkbox', 'weight' => 2])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
 
     $fields['status'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Active'))
       ->setDefaultValue(TRUE)
-      ->setDisplayOptions('form', ['type' => 'boolean_checkbox']);
+      ->setDisplayOptions('form', ['type' => 'boolean_checkbox', 'weight' => 3])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
 
-    $fields['created'] = BaseFieldDefinition::create('created')
-      ->setLabel(t('Created'));
-
-    // Necessário para EntityOwnerInterface
     $fields['user_id'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Author'))
-      ->setDescription(t('The user ID of the question author.'))
+      ->setDescription(t('User who created the question.'))
       ->setSetting('target_type', 'user')
       ->setDefaultValueCallback(static::class . '::getCurrentUserId')
-      ->setTranslatable(TRUE)
-      ->setDisplayOptions('view', ['label' => 'hidden', 'type' => 'author'])
-      ->setDisplayOptions('form', [
-        'type' => 'entity_reference_autocomplete',
-        'settings' => ['match_operator' => 'CONTAINS', 'size' => '60'],
-      ])
+      ->setDisplayOptions('form', ['type' => 'entity_reference_autocomplete', 'weight' => 4])
       ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['created'] = BaseFieldDefinition::create('created')
+      ->setLabel(t('Created'))
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['changed'] = BaseFieldDefinition::create('changed')
+      ->setLabel(t('Changed'))
       ->setDisplayConfigurable('view', TRUE);
 
     return $fields;

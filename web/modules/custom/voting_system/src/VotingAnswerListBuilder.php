@@ -4,8 +4,11 @@ namespace Drupal\voting_system;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityListBuilder;
-use Drupal\Core\Link;
+use Drupal\Core\Url;
 
+/**
+ * Provides a list builder for Voting Answer entities.
+ */
 class VotingAnswerListBuilder extends EntityListBuilder {
 
   /**
@@ -13,7 +16,7 @@ class VotingAnswerListBuilder extends EntityListBuilder {
    */
   public function buildHeader(): array {
     $header['title'] = $this->t('Title');
-    $header['question_id'] = $this->t('Question ID');
+    $header['question_id'] = $this->t('Question');
     return $header + parent::buildHeader();
   }
 
@@ -22,19 +25,14 @@ class VotingAnswerListBuilder extends EntityListBuilder {
    */
   public function buildRow(EntityInterface $entity): array {
     /** @var \Drupal\voting_system\Entity\VotingAnswer $entity */
-
-    $row = [];
-
-    // Show VotingAnswer title as a link to the entity
     $row['title'] = $entity->toLink();
 
-    // Get related VotingQuestion
-    /** @var \Drupal\voting_system\Entity\VotingQuestion $question */
     $question = $entity->get('question_id')->entity;
     $row['question_id'] = $question ? $question->label() : $this->t('No question');
 
-    return $row + parent::buildRow($entity); // Include operations column
+    return $row + parent::buildRow($entity);
   }
+
   /**
    * {@inheritdoc}
    */
@@ -42,13 +40,13 @@ class VotingAnswerListBuilder extends EntityListBuilder {
     $build = parent::render();
 
     $build['add'] = [
-        '#type' => 'link',
-        '#title' => $this->t('Add Voting Answer'),
-        '#url' => \Drupal\Core\Url::fromRoute('entity.voting_answer.add_form'),
-        '#attributes' => [
-            'class' => ['button', 'button--primary']
-        ],
-        '#weight' => -10,
+      '#type' => 'link',
+      '#title' => $this->t('Add Voting Answer'),
+      '#url' => Url::fromRoute('entity.voting_answer.add_form'),
+      '#attributes' => [
+        'class' => ['button', 'button--primary'],
+      ],
+      '#weight' => -10,
     ];
 
     return $build;
