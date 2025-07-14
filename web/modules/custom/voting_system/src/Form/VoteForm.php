@@ -43,7 +43,7 @@ class VoteForm extends FormBase {
     foreach ($options as $id => $rendered_option) {
       $form['answer_id'][$id] = [
         '#type' => 'radio',
-        '#title' => $rendered_option, // ✅ This is safe
+        '#title' => $rendered_option,
         '#return_value' => $id,
         '#parents' => ['answer_id'],
       ];
