@@ -3,13 +3,11 @@
 namespace Drupal\voting_system\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
-use Drupal\Core\Url;
-use Drupal\Core\Link;
-use Drupal\voting_system\Entity\VotingQuestion;
+use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\voting_system\Service\VoteService;
 
-class VotingResultsController extends ControllerBase {
+class VotingResultsController extends ControllerBase implements ContainerInjectionInterface {
 
   protected VoteService $voteService;
 

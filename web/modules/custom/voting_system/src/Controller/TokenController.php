@@ -4,13 +4,24 @@ namespace Drupal\voting_system\Controller;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Drupal\user\Entity\User;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\voting_system\Service\TokenService;
 
 class TokenController extends ControllerBase {
 
-  public function getToken(Request $request) {
+  protected TokenService $tokenService;
+
+  public function __construct(TokenService $tokenService) {
+    $this->tokenService = $tokenService;
+  }
+
+  public static function create(\Symfony\Component\DependencyInjection\ContainerInterface $container): static {
+    return new static(
+      $container->get('voting_system.token_service')
+    );
+  }
+
+  public function getToken(Request $request): JsonResponse {
     $username = $request->get('username');
     $password = $request->get('password');
 
@@ -24,8 +35,7 @@ class TokenController extends ControllerBase {
       return new JsonResponse(['error' => 'Invalid credentials'], 401);
     }
 
-    $tokenService = \Drupal::service('voting_system.token_service');
-    $token = $tokenService->generateToken($user->id());
+    $token = $this->tokenService->generateToken($user->id());
 
     return new JsonResponse(['access_token' => $token, 'token_type' => 'Bearer']);
   }

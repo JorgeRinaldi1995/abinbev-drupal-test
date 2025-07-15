@@ -1,7 +1,16 @@
 services:
+  voting_system.token_service:
+    class: Drupal\voting_system\Service\TokenService
+    arguments: ['@keyvalue']
+
+  voting_system.token_auth_service:
+    class: Drupal\voting_system\Service\TokenAuthService
+    arguments: ['@voting_system.token_service']
+
+  voting_system.voting_manager:
+    class: Drupal\voting_system\Service\VotingManagerService
+    arguments: ['@entity_type.manager']
+
   voting_system.vote_service:
     class: Drupal\voting_system\Service\VoteService
     arguments: ['@entity_type.manager']
-  voting_system.token_service:
-    class: 'Drupal\voting_system\Service\TokenService'
-    arguments: ['@keyvalue']

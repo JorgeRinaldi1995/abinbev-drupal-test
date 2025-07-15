@@ -7,53 +7,44 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
-use Drupal\voting_system\Entity\VotingQuestion;
-use Drupal\voting_system\Entity\VotingAnswer;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\voting_system\Service\VotingManagerService;
+use Drupal\voting_system\Trait\JsonRequestTrait;
 
 class ApiManageVotingController extends ControllerBase {
+  use JsonRequestTrait;
 
   protected $currentUser;
+  protected VotingManagerService $votingManager;
 
-  public function __construct(AccountProxyInterface $current_user) {
-    $this->currentUser = $current_user;
+  public function __construct(AccountProxyInterface $currentUser, VotingManagerService $votingManager) {
+    $this->currentUser = $currentUser;
+    $this->votingManager = $votingManager;
   }
 
   public static function create(ContainerInterface $container): static {
     return new static(
-      $container->get('current_user')
+      $container->get('current_user'),
+      $container->get('voting_system.voting_manager')
     );
   }
 
-  /**
-   * List active voting questions.
-   */
   public function listActiveQuestions(): JsonResponse {
-    $questions = \Drupal::entityTypeManager()
-      ->getStorage('voting_question')
-      ->loadByProperties(['status' => 1]);
-
-    $data = [];
-
-    foreach ($questions as $question) {
-      $data[] = [
-        'id' => $question->id(),
-        'title' => $question->get('title')->value,
-        'question_id' => $question->get('question_id')->value,
-        'show_percent' => (bool) $question->get('show_percent')->value,
-        'created' => $question->get('created')->value,
-      ];
-    }
+    $questions = $this->votingManager->loadActiveQuestions();
+    $data = array_map(fn($question) => [
+      'id' => $question->id(),
+      'title' => $question->get('title')->value,
+      'question_id' => $question->get('question_id')->value,
+      'show_percent' => (bool) $question->get('show_percent')->value,
+      'created' => $question->get('created')->value,
+    ], $questions);
 
     return new JsonResponse($data);
   }
 
-  /**
-   * Admin creates a new voting question.
-   */
   public function createQuestion(Request $request): JsonResponse {
-    $data = json_decode($request->getContent(), TRUE);
+    $data = $this->getJsonData($request);
     $title = $data['title'] ?? NULL;
     $question_id = $data['question_id'] ?? NULL;
     $show_percent = $data['show_percent'] ?? TRUE;
@@ -62,79 +53,29 @@ class ApiManageVotingController extends ControllerBase {
       return new JsonResponse(['error' => 'Missing title or question_id.'], 400);
     }
 
-    $question = VotingQuestion::create([
-      'title' => $title,
-      'question_id' => $question_id,
-      'show_percent' => (bool) $show_percent,
-      'status' => 1,
-      'user_id' => $this->currentUser->id(),
-    ]);
-    $question->save();
-
+    $question = $this->votingManager->createQuestion($title, $question_id, $show_percent, $this->currentUser->id());
     return new JsonResponse(['success' => TRUE, 'id' => $question->id()]);
   }
 
-  /**
-   * Admin creates a new answer for a question.
-   */
   public function createAnswer(Request $request): JsonResponse {
-    $data = json_decode($request->getContent(), TRUE);
+    $data = $this->getJsonData($request);
     $title = $data['title'] ?? NULL;
     $question_id = $data['question_id'] ?? NULL;
     $description = $data['description'] ?? '';
-    $image = NULL; // skipping image upload for now
 
     if (!$title || !$question_id) {
       return new JsonResponse(['error' => 'Missing title or question_id.'], 400);
     }
 
-    $answer = VotingAnswer::create([
-      'title' => $title,
-      'description' => $description,
-      'question_id' => $question_id,
-      'vote_count' => 0,
-    ]);
-    $answer->save();
-
+    $answer = $this->votingManager->createAnswer($title, $description, $question_id);
     return new JsonResponse(['success' => TRUE, 'id' => $answer->id()]);
   }
 
-  /**
-   * Access for any authenticated user.
-   */
   public static function access(Request $request, AccountInterface $account): AccessResult {
-    $auth_header = $request->headers->get('Authorization');
-    if (!$auth_header || !str_starts_with($auth_header, 'Bearer ')) {
-      return AccessResult::forbidden();
-    }
-
-    $token = substr($auth_header, 7);
-    $token_service = \Drupal::service('voting_system.token_service');
-    return $token_service->validateToken($token) ? AccessResult::allowed() : AccessResult::forbidden();
+    return \Drupal::service('voting_system.token_auth_service')->checkAccess($request);
   }
 
-  /**
-   * Only allow admin users.
-   */
   public static function adminAccess(Request $request, AccountInterface $account): AccessResult {
-    $auth_header = $request->headers->get('Authorization');
-    if (!$auth_header || !str_starts_with($auth_header, 'Bearer ')) {
-      return AccessResult::forbidden();
-    }
-
-    $token = substr($auth_header, 7);
-    $token_service = \Drupal::service('voting_system.token_service');
-    $uid = $token_service->validateToken($token);
-
-    if (!$uid) {
-      return AccessResult::forbidden();
-    }
-
-    $user = \Drupal\user\Entity\User::load($uid);
-    if ($user && in_array('administrator', $user->getRoles())) {
-      return AccessResult::allowed();
-    }
-
-    return AccessResult::forbidden();
+    return \Drupal::service('voting_system.token_auth_service')->checkAdminAccess($request);
   }
 }
