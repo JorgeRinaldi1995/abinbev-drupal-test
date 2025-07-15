@@ -1,6 +1,7 @@
 services:
   voting_system.vote_service:
     class: Drupal\voting_system\Service\VoteService
-    arguments: []
+    arguments: ['@entity_type.manager']
   voting_system.token_service:
     class: 'Drupal\voting_system\Service\TokenService'
+    arguments: ['@keyvalue']
