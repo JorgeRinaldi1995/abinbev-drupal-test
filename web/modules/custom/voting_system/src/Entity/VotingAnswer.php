@@ -71,20 +71,10 @@ class VotingAnswer extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
-    $fields['question_id'] = BaseFieldDefinition::create('entity_reference')
-      ->setLabel(t('Related Question'))
-      ->setSetting('target_type', 'voting_question')
-      ->setRequired(TRUE)
-      ->setDisplayOptions('form', ['type' => 'options_select', 'weight' => 3])
-      ->setDisplayConfigurable('form', TRUE)
-      ->setDisplayConfigurable('view', TRUE);
-
-    $fields['vote_count'] = BaseFieldDefinition::create('integer')
-      ->setLabel(t('Vote Count'))
-      ->setDescription(t('Number of votes received for this answer.'))
-      ->setDefaultValue(0)
-      ->setReadOnly(TRUE)
-      ->setDisplayConfigurable('view', TRUE);
+    // Answers are now reusable across questions. The association and
+    // per-question vote counts are stored in the `voting_answer_assignment`
+    // entity which models the many-to-many relationship between
+    // questions and answers and holds the `vote_count` for each pair.
 
     $fields['created'] = BaseFieldDefinition::create('created')
       ->setLabel(t('Created'))

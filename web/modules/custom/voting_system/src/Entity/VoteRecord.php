@@ -66,11 +66,13 @@ class VoteRecord extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
-    // Reference to the question.
-    $fields['question_id'] = BaseFieldDefinition::create('entity_reference')
-      ->setLabel(t('Question'))
-      ->setDescription(t('The voting question this record relates to.'))
-      ->setSetting('target_type', 'voting_question')
+    // Reference to the specific question-answer assignment.
+    // This ensures the vote is tied to a particular (question, answer)
+    // pair when answers are reused across multiple questions.
+    $fields['assignment_id'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Answer Assignment'))
+      ->setDescription(t('Reference to the question-answer assignment this vote belongs to.'))
+      ->setSetting('target_type', 'voting_answer_assignment')
       ->setRequired(TRUE)
       ->setRevisionable(TRUE)
       ->setDisplayOptions('view', [
@@ -81,25 +83,6 @@ class VoteRecord extends ContentEntityBase {
       ->setDisplayOptions('form', [
         'type' => 'entity_reference_autocomplete',
         'weight' => 1,
-      ])
-      ->setDisplayConfigurable('form', TRUE)
-      ->setDisplayConfigurable('view', TRUE);
-
-    // Reference to the answer.
-    $fields['answer_id'] = BaseFieldDefinition::create('entity_reference')
-      ->setLabel(t('Answer'))
-      ->setDescription(t('The answer selected for the question.'))
-      ->setSetting('target_type', 'voting_answer')
-      ->setRequired(TRUE)
-      ->setRevisionable(TRUE)
-      ->setDisplayOptions('view', [
-        'label' => 'above',
-        'type' => 'entity_reference_label',
-        'weight' => 2,
-      ])
-      ->setDisplayOptions('form', [
-        'type' => 'entity_reference_autocomplete',
-        'weight' => 2,
       ])
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);

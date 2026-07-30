@@ -30,7 +30,7 @@ class ApiVoteController extends ControllerBase {
     );
   }
 
-  public function submitVote(Request $request, int $question_id): JsonResponse {
+  public function submitVote(Request $request, string $question_id): JsonResponse {
     $data = $this->getJsonData($request);
     $answer_id = $data['answer_id'] ?? NULL;
 
@@ -48,7 +48,7 @@ class ApiVoteController extends ControllerBase {
     }
 
     try {
-      $this->voteService->submitVote((int) $answer_id, $user->id());
+      $this->voteService->submitVote((int) $answer_id, $question_id, $user->id());
       return new JsonResponse(['success' => TRUE, 'message' => 'Vote recorded.']);
     }
     catch (\Exception $e) {
@@ -56,7 +56,7 @@ class ApiVoteController extends ControllerBase {
     }
   }
 
-  public function getResults(int $question_id): JsonResponse {
+  public function getResults(string $question_id): JsonResponse {
     try {
       $results = $this->voteService->getResults($question_id);
       return new JsonResponse($results);

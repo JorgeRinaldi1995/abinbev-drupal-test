@@ -11,6 +11,7 @@ use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\voting_system\Service\VotingManagerService;
 use Drupal\voting_system\Trait\JsonRequestTrait;
+use Drupal\voting_system\Entity\VotingQuestion;
 
 class ApiManageVotingController extends ControllerBase {
   use JsonRequestTrait;
@@ -32,13 +33,17 @@ class ApiManageVotingController extends ControllerBase {
 
   public function listActiveQuestions(): JsonResponse {
     $questions = $this->votingManager->loadActiveQuestions();
-    $data = array_map(fn($question) => [
-      'id' => $question->id(),
-      'title' => $question->get('title')->value,
-      'question_id' => $question->get('question_id')->value,
-      'show_percent' => (bool) $question->get('show_percent')->value,
-      'created' => $question->get('created')->value,
-    ], $questions);
+    $data = array_map(function ($question) {
+      return [
+        'id' => $question->id(),
+        'title' => $question->get('title')->value,
+        'question_id' => $question->get('question_id')->value,
+        'show_percent' => (bool) $question->get('show_percent')->value,
+        'status' => (bool) $question->get('status')->value,
+        'created' => $question->get('created')->value,
+        'answers' => $this->getQuestionAnswers($question->id()),
+      ];
+    }, $questions);
 
     return new JsonResponse($data);
   }
@@ -51,6 +56,11 @@ class ApiManageVotingController extends ControllerBase {
 
     if (!$title || !$question_id) {
       return new JsonResponse(['error' => 'Missing title or question_id.'], 400);
+    }
+
+    $existing_question = $this->votingManager->loadQuestionByIdentifier($question_id);
+    if ($existing_question instanceof VotingQuestion) {
+      return new JsonResponse(['error' => 'Question ID already exists.'], 409);
     }
 
     $question = $this->votingManager->createQuestion($title, $question_id, $show_percent, $this->currentUser->id());
@@ -67,8 +77,35 @@ class ApiManageVotingController extends ControllerBase {
       return new JsonResponse(['error' => 'Missing title or question_id.'], 400);
     }
 
-    $answer = $this->votingManager->createAnswer($title, $description, $question_id);
-    return new JsonResponse(['success' => TRUE, 'id' => $answer->id()]);
+    try {
+      $answer = $this->votingManager->createAnswer($title, $description, $question_id);
+      return new JsonResponse(['success' => TRUE, 'id' => $answer->id()]);
+    }
+    catch (\InvalidArgumentException $exception) {
+      return new JsonResponse(['error' => $exception->getMessage()], 400);
+    }
+  }
+
+  private function getQuestionAnswers(int $question_id): array {
+    $assignments = $this->entityTypeManager()->getStorage('voting_answer_assignment')->loadByProperties([
+      'question_id' => $question_id,
+    ]);
+
+    $answers = [];
+    foreach ($assignments as $assignment) {
+      $answer = $assignment->get('answer_id')->entity;
+      if (!$answer) {
+        continue;
+      }
+
+      $answers[] = [
+        'id' => $answer->id(),
+        'title' => $answer->label(),
+        'votes' => (int) $assignment->get('vote_count')->value,
+      ];
+    }
+
+    return $answers;
   }
 
   public static function access(Request $request, AccountInterface $account): AccessResult {

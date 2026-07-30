@@ -54,20 +54,32 @@ function voting_system_schema() {
   ];
 
     $schema['voting_answer'] = [
-    'description' => 'Stores answers for each question.',
+    'description' => 'Stores answers that can be reused across questions.',
     'fields' => [
       'id' => ['type' => 'serial', 'not null' => TRUE],
       'uuid' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE],
       'title' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE],
       'description' => ['type' => 'text', 'not null' => FALSE],
       'image' => ['type' => 'varchar', 'length' => 255, 'not null' => FALSE],
+      'created' => ['type' => 'int', 'not null' => TRUE],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => ['uuid' => ['uuid']],
+  ];
+
+  $schema['voting_answer_assignment'] = [
+    'description' => 'Association table between questions and answers with vote tally.',
+    'fields' => [
+      'id' => ['type' => 'serial', 'not null' => TRUE],
+      'uuid' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE],
       'question_id' => ['type' => 'int', 'not null' => TRUE],
+      'answer_id' => ['type' => 'int', 'not null' => TRUE],
       'vote_count' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
       'created' => ['type' => 'int', 'not null' => TRUE],
     ],
     'primary key' => ['id'],
     'unique keys' => ['uuid' => ['uuid']],
-    'indexes' => ['question_id' => ['question_id']],
+    'indexes' => ['question_answer' => ['question_id', 'answer_id']],
   ];
 
   $schema['vote_record'] = [
@@ -76,14 +88,13 @@ function voting_system_schema() {
     'id' => ['type' => 'serial', 'not null' => TRUE],
     'uuid' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE],
     'user_id' => ['type' => 'int', 'not null' => TRUE],
-    'question_id' => ['type' => 'int', 'not null' => TRUE],
-    'answer_id' => ['type' => 'int', 'not null' => TRUE],
+    'assignment_id' => ['type' => 'int', 'not null' => TRUE],
     'created' => ['type' => 'int', 'not null' => TRUE],
   ],
   'primary key' => ['id'],
   'unique keys' => [
     'uuid' => ['uuid'],
-    'user_vote' => ['user_id', 'question_id'],
+    'user_vote' => ['user_id', 'assignment_id'],
   ],
 ];
 

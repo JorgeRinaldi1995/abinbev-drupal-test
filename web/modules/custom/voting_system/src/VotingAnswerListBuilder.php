@@ -27,8 +27,19 @@ class VotingAnswerListBuilder extends EntityListBuilder {
     /** @var \Drupal\voting_system\Entity\VotingAnswer $entity */
     $row['title'] = $entity->toLink();
 
-    $question = $entity->get('question_id')->entity;
-    $row['question_id'] = $question ? $question->label() : $this->t('No question');
+    $assignment_storage = \Drupal::entityTypeManager()->getStorage('voting_answer_assignment');
+    $assignments = $assignment_storage->loadByProperties(['answer_id' => $entity->id()]);
+    if (empty($assignments)) {
+      $row['question_id'] = $this->t('No question');
+    }
+    elseif (count($assignments) === 1) {
+      $assignment = reset($assignments);
+      $question = $assignment->get('question_id')->entity;
+      $row['question_id'] = $question ? $question->label() : $this->t('Question #') . $assignment->get('question_id')->target_id;
+    }
+    else {
+      $row['question_id'] = $this->t('@count questions', ['@count' => count($assignments)]);
+    }
 
     return $row + parent::buildRow($entity);
   }

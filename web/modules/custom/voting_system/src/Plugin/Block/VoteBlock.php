@@ -11,6 +11,8 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\voting_system\Service\VoteService;
 use Drupal\Core\Render\Markup;
+use Drupal\file\FileInterface;
+
 
 /**
  * Provides a Voting Block.
@@ -142,15 +144,26 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
       return ['#markup' => $this->t('The selected question is not available.')];
     }
 
-    // Verifica se o usuário já votou.
-    $vote_records = $this->entityTypeManager
-      ->getStorage('vote_record')
-      ->loadByProperties([
-        'user_id' => $this->account->id(),
-        'question_id' => $question->id(),
-      ]);
+    $assignments = $this->entityTypeManager
+      ->getStorage('voting_answer_assignment')
+      ->loadByProperties(['question_id' => $question->id()]);
 
-    if (!empty($vote_records)) {
+    $has_user_vote = FALSE;
+    foreach ($assignments as $assignment) {
+      $vote_records = $this->entityTypeManager
+        ->getStorage('vote_record')
+        ->loadByProperties([
+          'user_id' => $this->account->id(),
+          'assignment_id' => $assignment->id(),
+        ]);
+
+      if (!empty($vote_records)) {
+        $has_user_vote = TRUE;
+        break;
+      }
+    }
+
+    if ($has_user_vote) {
       if ($question->get('show_percent')->value) {
         $results = $this->voteService->getResults($question->id());
 
@@ -176,19 +189,33 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
       return ['#markup' => $this->t('You have already voted.')];
     }
 
-    // Carrega as respostas da pergunta selecionada.
-    $answers = $this->entityTypeManager
-      ->getStorage('voting_answer')
-      ->loadByProperties(['question_id' => $question->id()]);
-
     $file_url_generator = \Drupal::service('file_url_generator');
 
+    $build = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['voting-block']],
+    ];
+
+    $build['question_title'] = [
+      '#type' => 'html_tag',
+      '#tag' => 'h3',
+      '#value' => $question->label(),
+    ];
+
     $options = [];
-    foreach ($answers as $answer) {
+    foreach ($assignments as $assignment) {
+      $answer = $assignment->get('answer_id')->entity;
+      if (!$answer) {
+        continue;
+      }
+
       $image_url = '';
-      if (!$answer->get('image')->isEmpty()) {
-        $image_file = $answer->get('image')->entity;
-        $image_url = $file_url_generator->generateAbsoluteString($image_file->getFileUri());
+      $image = $answer->get('image')->entity;
+
+      if ($image instanceof FileInterface) {
+        $image_url = $file_url_generator->generateAbsoluteString(
+          $image->getFileUri()
+        );
       }
 
       $title = $answer->get('title')->value;
@@ -204,10 +231,11 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
       }
       $markup .= '</div>';
 
-      $options[$answer->id()] = Markup::create($markup);
+      $options[$assignment->id()] = Markup::create($markup);
     }
 
-    // Retorna o formulário com os dados da questão e respostas.
-    return $this->formBuilder->getForm('Drupal\voting_system\Form\VoteForm', $question->id(), $options);
+    $build['form'] = $this->formBuilder->getForm('Drupal\voting_system\Form\VoteForm', $question->id(), $options);
+
+    return $build;
   }
 }

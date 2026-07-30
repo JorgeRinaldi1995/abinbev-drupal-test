@@ -25,9 +25,9 @@ use Drupal\user\EntityOwnerTrait;
  *   handlers = {
  *     "list_builder" = "Drupal\voting_system\VotingQuestionListBuilder",
  *     "form" = {
- *       "default" = "Drupal\Core\Entity\ContentEntityForm",
- *       "add" = "Drupal\Core\Entity\ContentEntityForm",
- *       "edit" = "Drupal\Core\Entity\ContentEntityForm",
+ *       "default" = "Drupal\voting_system\Form\VotingQuestionForm",
+ *       "add" = "Drupal\voting_system\Form\VotingQuestionForm",
+ *       "edit" = "Drupal\voting_system\Form\VotingQuestionForm",
  *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm"
  *     }
  *   },
