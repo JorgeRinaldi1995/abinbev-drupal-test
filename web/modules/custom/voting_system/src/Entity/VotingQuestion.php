@@ -3,9 +3,10 @@
 namespace Drupal\voting_system\Entity;
 
 use Drupal\Core\Entity\ContentEntityBase;
+use Drupal\Core\Entity\EntityChangedTrait;
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
-use Drupal\Core\Entity\EntityChangedTrait;
 use Drupal\user\EntityOwnerInterface;
 use Drupal\user\EntityOwnerTrait;
 
@@ -71,7 +72,8 @@ class VotingQuestion extends ContentEntityBase implements EntityOwnerInterface {
       ->setRequired(TRUE)
       ->setSettings(['max_length' => 64])
       ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => 1])
-      ->setDisplayConfigurable('form', TRUE);
+      ->setDisplayConfigurable('form', TRUE)
+      ->addConstraint('UniqueQuestionIdentifier');
 
     $fields['show_percent'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Show vote percentage'))

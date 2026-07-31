@@ -3,6 +3,7 @@
 namespace Drupal\voting_system\Form;
 
 use Drupal\Core\Entity\ContentEntityForm;
+use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
 
@@ -23,6 +24,11 @@ class VotingQuestionForm extends ContentEntityForm {
       $rows = [0];
       $form_state->set('answer_rows', $rows);
     }
+
+    $form['status_messages'] = [
+      '#type' => 'status_messages',
+      '#weight' => -10,
+    ];
 
     $form['answers_wrapper'] = [
       '#type' => 'details',
@@ -126,43 +132,94 @@ class VotingQuestionForm extends ContentEntityForm {
 
       $selected_ids[] = $answer_id;
     }
+
+    $question_id_value = $form_state->getValue('question_id');
+    if (is_array($question_id_value)) {
+      if (isset($question_id_value['value']) && is_scalar($question_id_value['value'])) {
+        $question_id_value = $question_id_value['value'];
+      }
+      elseif (isset($question_id_value[0]) && is_scalar($question_id_value[0])) {
+        $question_id_value = $question_id_value[0];
+      }
+      else {
+        return;
+      }
+    }
+
+    if (!is_scalar($question_id_value)) {
+      return;
+    }
+
+    $question_id = trim((string) $question_id_value);
+    if ($question_id === '') {
+      return;
+    }
+
+    $query = \Drupal::entityQuery('voting_question')
+      ->accessCheck(FALSE)
+      ->condition('question_id', $question_id);
+
+    if (!$this->entity->isNew()) {
+      $query->condition('id', $this->entity->id(), '<>');
+    }
+
+    $ids = $query->execute();
+
+    if (!empty($ids)) {
+      $form_state->setErrorByName(
+        'question_id',
+        $this->t('The question identifier is already in use. Please choose another one.')
+      );
+    }
   }
 
   /**
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
-    parent::submitForm($form, $form_state);
+    try {
+      parent::submitForm($form, $form_state);
 
-    $entity = $this->entity;
-    if (!$entity->id()) {
-      return;
+      $entity = $this->entity;
+      if (!$entity->id()) {
+        return;
+      }
+
+      $rows = $form_state->get('answer_rows') ?: [];
+      $assignment_storage = \Drupal::entityTypeManager()->getStorage('voting_answer_assignment');
+
+      foreach ($rows as $delta) {
+        $answer_id = $form_state->getValue(['answers_wrapper', 'rows', $delta, 'answer']);
+        if (!$answer_id) {
+          continue;
+        }
+
+        $existing = $assignment_storage->loadByProperties([
+          'question_id' => $entity->id(),
+          'answer_id' => $answer_id,
+        ]);
+
+        if (!empty($existing)) {
+          continue;
+        }
+
+        $assignment = $assignment_storage->create([
+          'question_id' => $entity->id(),
+          'answer_id' => $answer_id,
+          'vote_count' => 0,
+        ]);
+        $assignment->save();
+      }
+
+      $this->messenger()->addStatus($this->t('Question created successfully.'));
     }
-
-    $rows = $form_state->get('answer_rows') ?: [];
-    $assignment_storage = \Drupal::entityTypeManager()->getStorage('voting_answer_assignment');
-
-    foreach ($rows as $delta) {
-      $answer_id = $form_state->getValue(['answers_wrapper', 'rows', $delta, 'answer']);
-      if (!$answer_id) {
-        continue;
-      }
-
-      $existing = $assignment_storage->loadByProperties([
-        'question_id' => $entity->id(),
-        'answer_id' => $answer_id,
-      ]);
-
-      if (!empty($existing)) {
-        continue;
-      }
-
-      $assignment = $assignment_storage->create([
-        'question_id' => $entity->id(),
-        'answer_id' => $answer_id,
-        'vote_count' => 0,
-      ]);
-      $assignment->save();
+    catch (EntityStorageException $e) {
+      $this->messenger()->addError($this->t('The question identifier must be unique'));
+      $form_state->setRebuild(TRUE);
+    }
+    catch (\Exception $e) {
+      $this->messenger()->addError($this->t('The question identifier must be unique'));
+      $form_state->setRebuild(TRUE);
     }
   }
 

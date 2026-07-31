@@ -58,13 +58,26 @@ class ApiManageVotingController extends ControllerBase {
       return new JsonResponse(['error' => 'Missing title or question_id.'], 400);
     }
 
-    $existing_question = $this->votingManager->loadQuestionByIdentifier($question_id);
-    if ($existing_question instanceof VotingQuestion) {
-      return new JsonResponse(['error' => 'Question ID already exists.'], 409);
+    try {
+      $question = $this->votingManager->createQuestion($title, $question_id, $show_percent, $this->currentUser->id());
+      return new JsonResponse([
+        'success' => TRUE,
+        'message' => 'Question created successfully',
+        'id' => $question->id(),
+      ]);
     }
-
-    $question = $this->votingManager->createQuestion($title, $question_id, $show_percent, $this->currentUser->id());
-    return new JsonResponse(['success' => TRUE, 'id' => $question->id()]);
+    catch (\InvalidArgumentException $exception) {
+      return new JsonResponse([
+        'success' => FALSE,
+        'message' => 'The question identifier must be unique',
+      ], 409);
+    }
+    catch (\Drupal\Core\Entity\EntityStorageException $exception) {
+      return new JsonResponse([
+        'success' => FALSE,
+        'message' => 'The question identifier must be unique',
+      ], 409);
+    }
   }
 
   public function createAnswer(Request $request): JsonResponse {
@@ -79,10 +92,23 @@ class ApiManageVotingController extends ControllerBase {
 
     try {
       $answer = $this->votingManager->createAnswer($title, $description, $question_id);
-      return new JsonResponse(['success' => TRUE, 'id' => $answer->id()]);
+      return new JsonResponse([
+        'success' => TRUE,
+        'message' => 'Answer created successfully',
+        'id' => $answer->id(),
+      ]);
     }
     catch (\InvalidArgumentException $exception) {
-      return new JsonResponse(['error' => $exception->getMessage()], 400);
+      return new JsonResponse([
+        'success' => FALSE,
+        'message' => $exception->getMessage(),
+      ], 400);
+    }
+    catch (\Drupal\Core\Entity\EntityStorageException $exception) {
+      return new JsonResponse([
+        'success' => FALSE,
+        'message' => 'The question identifier must be unique',
+      ], 400);
     }
   }
 

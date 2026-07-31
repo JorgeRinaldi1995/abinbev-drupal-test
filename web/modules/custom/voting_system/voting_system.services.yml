@@ -14,3 +14,10 @@ services:
   voting_system.vote_service:
     class: Drupal\voting_system\Service\VoteService
     arguments: ['@entity_type.manager']
+  
+  voting_system.unique_question_identifier_validator:
+    class: Drupal\voting_system\Plugin\Validation\Constraint\UniqueQuestionIdentifierConstraintValidator
+    arguments:
+      - '@entity_type.manager'
+    tags:
+      - { name: validation.constraint_validator, alias: UniqueQuestionIdentifier }

@@ -36,14 +36,19 @@ class VotingManagerService {
   }
 
   public function createQuestion(string $title, string $question_id, bool $show_percent, int $user_id): VotingQuestion {
-    $existing_question = $this->loadQuestionByIdentifier($question_id);
+    $normalized_question_id = trim($question_id);
+    if ($normalized_question_id === '') {
+      throw new \InvalidArgumentException('The question identifier cannot be empty.');
+    }
+
+    $existing_question = $this->loadQuestionByIdentifier($normalized_question_id);
     if ($existing_question instanceof VotingQuestion) {
       throw new \InvalidArgumentException('The provided question identifier already exists.');
     }
 
     $question = VotingQuestion::create([
       'title' => $title,
-      'question_id' => $question_id,
+      'question_id' => $normalized_question_id,
       'show_percent' => $show_percent,
       'status' => 1,
       'user_id' => $user_id,
