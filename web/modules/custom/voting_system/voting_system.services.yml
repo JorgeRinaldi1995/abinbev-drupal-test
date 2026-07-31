@@ -7,17 +7,40 @@ services:
     class: Drupal\voting_system\Service\TokenAuthService
     arguments: ['@voting_system.token_service']
 
+  voting_system.question_resolver:
+    class: Drupal\voting_system\Service\QuestionResolverService
+    arguments: ['@entity_type.manager']
+
   voting_system.voting_manager:
     class: Drupal\voting_system\Service\VotingManagerService
-    arguments: ['@entity_type.manager']
+    arguments: ['@entity_type.manager', '@voting_system.question_resolver']
 
   voting_system.vote_service:
     class: Drupal\voting_system\Service\VoteService
-    arguments: ['@entity_type.manager']
-  
+    arguments: ['@entity_type.manager', '@voting_system.question_resolver']
+
+  voting_system.vote_results_service:
+    class: Drupal\voting_system\Service\VoteResultsService
+    arguments: ['@entity_type.manager', '@voting_system.question_resolver']
+
+  voting_system.access_check:
+    class: Drupal\voting_system\Access\VotingApiAccessCheck
+    arguments: ['@voting_system.token_auth_service']
+    tags:
+      - { name: access_check, applies_to: _voting_system_api_access }
+
   voting_system.unique_question_identifier_validator:
     class: Drupal\voting_system\Plugin\Validation\Constraint\UniqueQuestionIdentifierConstraintValidator
     arguments:
       - '@entity_type.manager'
     tags:
       - { name: validation.constraint_validator, alias: UniqueQuestionIdentifier }
+
+  # Class-name aliases so these services can be autowired or fetched by
+  # type-hint (e.g. from kernel tests) instead of only by machine name.
+  Drupal\voting_system\Service\TokenService: '@voting_system.token_service'
+  Drupal\voting_system\Service\TokenAuthService: '@voting_system.token_auth_service'
+  Drupal\voting_system\Service\QuestionResolverService: '@voting_system.question_resolver'
+  Drupal\voting_system\Service\VotingManagerService: '@voting_system.voting_manager'
+  Drupal\voting_system\Service\VoteService: '@voting_system.vote_service'
+  Drupal\voting_system\Service\VoteResultsService: '@voting_system.vote_results_service'

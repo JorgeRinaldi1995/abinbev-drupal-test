@@ -100,7 +100,7 @@ voting_system.api.vote:
   defaults:
     _controller: '\Drupal\voting_system\Controller\ApiVoteController::submitVote'
   requirements:
-    _custom_access: '\Drupal\voting_system\Controller\ApiVoteController::access'
+    _voting_system_api_access: 'user'
 
 voting_system.api.vote_results:
   path: '/api/vote-results/{question_id}'
@@ -108,7 +108,7 @@ voting_system.api.vote_results:
   defaults:
     _controller: '\Drupal\voting_system\Controller\ApiVoteController::getResults'
   requirements:
-    _custom_access: '\Drupal\voting_system\Controller\ApiVoteController::access'
+    _voting_system_api_access: 'user'
 
 voting_system.api.questions:
   path: '/api/voting/questions'
@@ -116,7 +116,7 @@ voting_system.api.questions:
   defaults:
     _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::listActiveQuestions'
   requirements:
-    _custom_access: '\Drupal\voting_system\Controller\ApiManageVotingController::access'
+    _voting_system_api_access: 'user'
 
 voting_system.api.create_question:
   path: '/api/voting/question'
@@ -124,7 +124,7 @@ voting_system.api.create_question:
   defaults:
     _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::createQuestion'
   requirements:
-    _custom_access: '\Drupal\voting_system\Controller\ApiManageVotingController::adminAccess'
+    _voting_system_api_access: 'admin'
 
 voting_system.api.create_answer:
   path: '/api/voting/answer'
@@ -132,4 +132,4 @@ voting_system.api.create_answer:
   defaults:
     _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::createAnswer'
   requirements:
-    _custom_access: '\Drupal\voting_system\Controller\ApiManageVotingController::adminAccess'
+    _voting_system_api_access: 'admin'

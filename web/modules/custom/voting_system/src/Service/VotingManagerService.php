@@ -1,18 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\voting_system\Service;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\voting_system\Entity\VotingQuestion;
 use Drupal\voting_system\Entity\VotingAnswer;
+use Drupal\voting_system\Entity\VotingQuestion;
+use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
 
 class VotingManagerService {
 
-  protected EntityTypeManagerInterface $entityTypeManager;
-
-  public function __construct(EntityTypeManagerInterface $entityTypeManager) {
-    $this->entityTypeManager = $entityTypeManager;
-  }
+  public function __construct(
+    protected readonly EntityTypeManagerInterface $entityTypeManager,
+    protected readonly QuestionResolverService $questionResolver,
+  ) {}
 
   public function loadActiveQuestions(): array {
     return $this->entityTypeManager
@@ -20,30 +22,30 @@ class VotingManagerService {
       ->loadByProperties(['status' => 1]);
   }
 
-  public function loadQuestionByIdentifier(int|string $question_identifier): ?VotingQuestion {
-    if (is_numeric($question_identifier)) {
-      $question = $this->entityTypeManager->getStorage('voting_question')->load((int) $question_identifier);
-      if ($question instanceof VotingQuestion) {
-        return $question;
-      }
-    }
-
-    $questions = $this->entityTypeManager->getStorage('voting_question')->loadByProperties([
-      'question_id' => (string) $question_identifier,
-    ]);
-
-    return !empty($questions) ? reset($questions) : NULL;
+  /**
+   * Active questions as plain arrays, ready to be JSON-encoded.
+   *
+   * Keeps knowledge of the entities' field names out of the controller.
+   */
+  public function getActiveQuestionsData(): array {
+    return array_map(
+      fn (VotingQuestion $question) => $this->buildQuestionData($question),
+      $this->loadActiveQuestions()
+    );
   }
 
+  /**
+   * @throws \InvalidArgumentException
+   * @throws \Drupal\voting_system\Exception\DuplicateQuestionIdentifierException
+   */
   public function createQuestion(string $title, string $question_id, bool $show_percent, int $user_id): VotingQuestion {
     $normalized_question_id = trim($question_id);
     if ($normalized_question_id === '') {
       throw new \InvalidArgumentException('The question identifier cannot be empty.');
     }
 
-    $existing_question = $this->loadQuestionByIdentifier($normalized_question_id);
-    if ($existing_question instanceof VotingQuestion) {
-      throw new \InvalidArgumentException('The provided question identifier already exists.');
+    if ($this->questionResolver->findByIdentifier($normalized_question_id)) {
+      throw new DuplicateQuestionIdentifierException('The provided question identifier already exists.');
     }
 
     $question = VotingQuestion::create([
@@ -57,11 +59,11 @@ class VotingManagerService {
     return $question;
   }
 
+  /**
+   * @throws \Drupal\voting_system\Exception\QuestionNotFoundException
+   */
   public function createAnswer(string $title, string $description, int|string $question_identifier): VotingAnswer {
-    $question = $this->loadQuestionByIdentifier($question_identifier);
-    if (!$question instanceof VotingQuestion) {
-      throw new \InvalidArgumentException('Question not found.');
-    }
+    $question = $this->questionResolver->resolve($question_identifier);
 
     $answer = VotingAnswer::create([
       'title' => $title,
@@ -69,13 +71,47 @@ class VotingManagerService {
     ]);
     $answer->save();
 
-    $assignment = $this->entityTypeManager->getStorage('voting_answer_assignment')->create([
+    $this->entityTypeManager->getStorage('voting_answer_assignment')->create([
       'question_id' => $question->id(),
       'answer_id' => $answer->id(),
       'vote_count' => 0,
-    ]);
-    $assignment->save();
+    ])->save();
 
     return $answer;
   }
+
+  private function buildQuestionData(VotingQuestion $question): array {
+    return [
+      'id' => $question->id(),
+      'title' => $question->get('title')->value,
+      'question_id' => $question->get('question_id')->value,
+      'show_percent' => (bool) $question->get('show_percent')->value,
+      'status' => (bool) $question->get('status')->value,
+      'created' => $question->get('created')->value,
+      'answers' => $this->getQuestionAnswersData((int) $question->id()),
+    ];
+  }
+
+  private function getQuestionAnswersData(int $question_id): array {
+    $assignments = $this->entityTypeManager->getStorage('voting_answer_assignment')->loadByProperties([
+      'question_id' => $question_id,
+    ]);
+
+    $answers = [];
+    foreach ($assignments as $assignment) {
+      $answer = $assignment->get('answer_id')->entity;
+      if (!$answer) {
+        continue;
+      }
+
+      $answers[] = [
+        'id' => $answer->id(),
+        'title' => $answer->label(),
+        'votes' => (int) $assignment->get('vote_count')->value,
+      ];
+    }
+
+    return $answers;
+  }
+
 }

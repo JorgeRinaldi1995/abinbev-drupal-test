@@ -1,31 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\voting_system\Controller;
 
-use Drupal\Core\Controller\ControllerBase;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\voting_system\Service\VoteService;
+use Drupal\voting_system\Exception\AnswerNotFoundException;
+use Drupal\voting_system\Exception\AnswerQuestionMismatchException;
+use Drupal\voting_system\Exception\DuplicateVoteException;
+use Drupal\voting_system\Exception\QuestionNotFoundException;
 use Drupal\voting_system\Service\TokenAuthService;
-use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Session\AccountInterface;
-use Drupal\voting_system\Trait\JsonRequestTrait;
+use Drupal\voting_system\Service\VoteResultsService;
+use Drupal\voting_system\Service\VoteService;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 
-class ApiVoteController extends ControllerBase {
-  use JsonRequestTrait;
+/**
+ * Public API endpoints for casting a vote and reading its results.
+ */
+class ApiVoteController extends ApiControllerBase {
 
-  protected VoteService $voteService;
-  protected TokenAuthService $tokenAuthService;
-
-  public function __construct(VoteService $voteService, TokenAuthService $tokenAuthService) {
-    $this->voteService = $voteService;
-    $this->tokenAuthService = $tokenAuthService;
-  }
+  public function __construct(
+    protected readonly VoteService $voteService,
+    protected readonly VoteResultsService $voteResultsService,
+    protected readonly TokenAuthService $tokenAuthService,
+  ) {}
 
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('voting_system.vote_service'),
+      $container->get('voting_system.vote_results_service'),
       $container->get('voting_system.token_auth_service')
     );
   }
@@ -35,38 +39,31 @@ class ApiVoteController extends ControllerBase {
     $answer_id = $data['answer_id'] ?? NULL;
 
     if (!$answer_id || !is_numeric($answer_id)) {
-      return new JsonResponse(['error' => 'Missing or invalid answer_id.'], 400);
-    }
-
-    if (!$this->voteService->validateAnswerForQuestion((int) $answer_id, $question_id)) {
-      return new JsonResponse(['error' => 'Answer does not belong to the selected question.'], 400);
+      return $this->jsonError('Missing or invalid answer_id.', 400);
     }
 
     $user = $this->tokenAuthService->getUserFromToken($request);
     if (!$user) {
-      return new JsonResponse(['error' => 'Unauthorized'], 401);
+      return $this->jsonError('Unauthorized', 401);
     }
 
     try {
-      $this->voteService->submitVote((int) $answer_id, $question_id, $user->id());
-      return new JsonResponse(['success' => TRUE, 'message' => 'Vote recorded.']);
+      $this->voteService->submitVote((int) $answer_id, $question_id, (int) $user->id());
     }
-    catch (\Exception $e) {
-      return new JsonResponse(['error' => $e->getMessage()], 403);
+    catch (QuestionNotFoundException|AnswerNotFoundException|AnswerQuestionMismatchException|DuplicateVoteException $exception) {
+      return $this->errorResponse($exception);
     }
+
+    return new JsonResponse(['success' => TRUE, 'message' => 'Vote recorded.']);
   }
 
   public function getResults(string $question_id): JsonResponse {
     try {
-      $results = $this->voteService->getResults($question_id);
-      return new JsonResponse($results);
+      return new JsonResponse($this->voteResultsService->getResults($question_id));
     }
-    catch (\Exception $e) {
-      return new JsonResponse(['error' => $e->getMessage()], 404);
+    catch (QuestionNotFoundException $exception) {
+      return $this->errorResponse($exception);
     }
   }
 
-  public static function access(Request $request, AccountInterface $account): AccessResult {
-    return \Drupal::service('voting_system.token_auth_service')->checkAccess($request);
-  }
 }

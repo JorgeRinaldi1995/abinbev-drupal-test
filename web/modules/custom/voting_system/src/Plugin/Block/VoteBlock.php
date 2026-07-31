@@ -9,7 +9,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Form\FormBuilderInterface;
-use Drupal\voting_system\Service\VoteService;
+use Drupal\Core\File\FileUrlGeneratorInterface;
+use Drupal\voting_system\Service\VoteResultsService;
 use Drupal\Core\Render\Markup;
 use Drupal\file\FileInterface;
 
@@ -47,12 +48,19 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
   protected FormBuilderInterface $formBuilder;
 
   /**
-   * The vote service.
+   * The vote results service.
    *
-   * @var \Drupal\voting_system\Service\VoteService
+   * @var \Drupal\voting_system\Service\VoteResultsService
    */
-  protected VoteService $voteService;
-  
+  protected VoteResultsService $voteResultsService;
+
+  /**
+   * The file URL generator.
+   *
+   * @var \Drupal\Core\File\FileUrlGeneratorInterface
+   */
+  protected FileUrlGeneratorInterface $fileUrlGenerator;
+
   /**
    * Constructs the VoteBlock.
    */
@@ -63,13 +71,15 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
     AccountInterface $account,
     EntityTypeManagerInterface $entityTypeManager,
     FormBuilderInterface $formBuilder,
-    VoteService $voteService,
+    VoteResultsService $voteResultsService,
+    FileUrlGeneratorInterface $fileUrlGenerator,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->account = $account;
     $this->entityTypeManager = $entityTypeManager;
     $this->formBuilder = $formBuilder;
-    $this->voteService = $voteService;
+    $this->voteResultsService = $voteResultsService;
+    $this->fileUrlGenerator = $fileUrlGenerator;
   }
 
   /**
@@ -83,7 +93,8 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
       $container->get('current_user'),
       $container->get('entity_type.manager'),
       $container->get('form_builder'),
-      $container->get('voting_system.vote_service'),
+      $container->get('voting_system.vote_results_service'),
+      $container->get('file_url_generator'),
     );
   }
 
@@ -165,7 +176,7 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
 
     if ($has_user_vote) {
       if ($question->get('show_percent')->value) {
-        $results = $this->voteService->getResults($question->id());
+        $results = $this->voteResultsService->getResults($question->id());
 
         $header = [$this->t('Answer'), $this->t('Votes'), $this->t('Percent')];
         $rows = [];
@@ -189,8 +200,6 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
       return ['#markup' => $this->t('You have already voted.')];
     }
 
-    $file_url_generator = \Drupal::service('file_url_generator');
-
     $build = [
       '#type' => 'container',
       '#attributes' => ['class' => ['voting-block']],
@@ -213,7 +222,7 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
       $image = $answer->get('image')->entity;
 
       if ($image instanceof FileInterface) {
-        $image_url = $file_url_generator->generateAbsoluteString(
+        $image_url = $this->fileUrlGenerator->generateAbsoluteString(
           $image->getFileUri()
         );
       }

@@ -1,28 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\voting_system\Controller;
 
-use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
+use Drupal\voting_system\Exception\QuestionNotFoundException;
+use Drupal\voting_system\Service\VotingManagerService;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\Core\Session\AccountProxyInterface;
-use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Session\AccountInterface;
-use Drupal\voting_system\Service\VotingManagerService;
-use Drupal\voting_system\Trait\JsonRequestTrait;
-use Drupal\voting_system\Entity\VotingQuestion;
 
-class ApiManageVotingController extends ControllerBase {
-  use JsonRequestTrait;
+/**
+ * API endpoints for administering voting questions and answers.
+ */
+class ApiManageVotingController extends ApiControllerBase {
 
-  protected $currentUser;
-  protected VotingManagerService $votingManager;
-
-  public function __construct(AccountProxyInterface $currentUser, VotingManagerService $votingManager) {
-    $this->currentUser = $currentUser;
-    $this->votingManager = $votingManager;
-  }
+  public function __construct(
+    protected readonly AccountProxyInterface $currentUser,
+    protected readonly VotingManagerService $votingManager,
+  ) {}
 
   public static function create(ContainerInterface $container): static {
     return new static(
@@ -32,20 +30,7 @@ class ApiManageVotingController extends ControllerBase {
   }
 
   public function listActiveQuestions(): JsonResponse {
-    $questions = $this->votingManager->loadActiveQuestions();
-    $data = array_map(function ($question) {
-      return [
-        'id' => $question->id(),
-        'title' => $question->get('title')->value,
-        'question_id' => $question->get('question_id')->value,
-        'show_percent' => (bool) $question->get('show_percent')->value,
-        'status' => (bool) $question->get('status')->value,
-        'created' => $question->get('created')->value,
-        'answers' => $this->getQuestionAnswers($question->id()),
-      ];
-    }, $questions);
-
-    return new JsonResponse($data);
+    return new JsonResponse($this->votingManager->getActiveQuestionsData());
   }
 
   public function createQuestion(Request $request): JsonResponse {
@@ -55,29 +40,21 @@ class ApiManageVotingController extends ControllerBase {
     $show_percent = $data['show_percent'] ?? TRUE;
 
     if (!$title || !$question_id) {
-      return new JsonResponse(['error' => 'Missing title or question_id.'], 400);
+      return $this->jsonError('Missing title or question_id.', 400);
     }
 
     try {
-      $question = $this->votingManager->createQuestion($title, $question_id, $show_percent, $this->currentUser->id());
-      return new JsonResponse([
-        'success' => TRUE,
-        'message' => 'Question created successfully',
-        'id' => $question->id(),
-      ]);
+      $question = $this->votingManager->createQuestion($title, $question_id, (bool) $show_percent, (int) $this->currentUser->id());
     }
-    catch (\InvalidArgumentException $exception) {
-      return new JsonResponse([
-        'success' => FALSE,
-        'message' => 'The question identifier must be unique',
-      ], 409);
+    catch (DuplicateQuestionIdentifierException|\InvalidArgumentException $exception) {
+      return $this->errorResponse($exception);
     }
-    catch (\Drupal\Core\Entity\EntityStorageException $exception) {
-      return new JsonResponse([
-        'success' => FALSE,
-        'message' => 'The question identifier must be unique',
-      ], 409);
-    }
+
+    return new JsonResponse([
+      'success' => TRUE,
+      'message' => 'Question created successfully',
+      'id' => $question->id(),
+    ]);
   }
 
   public function createAnswer(Request $request): JsonResponse {
@@ -87,58 +64,21 @@ class ApiManageVotingController extends ControllerBase {
     $description = $data['description'] ?? '';
 
     if (!$title || !$question_id) {
-      return new JsonResponse(['error' => 'Missing title or question_id.'], 400);
+      return $this->jsonError('Missing title or question_id.', 400);
     }
 
     try {
       $answer = $this->votingManager->createAnswer($title, $description, $question_id);
-      return new JsonResponse([
-        'success' => TRUE,
-        'message' => 'Answer created successfully',
-        'id' => $answer->id(),
-      ]);
     }
-    catch (\InvalidArgumentException $exception) {
-      return new JsonResponse([
-        'success' => FALSE,
-        'message' => $exception->getMessage(),
-      ], 400);
+    catch (QuestionNotFoundException $exception) {
+      return $this->errorResponse($exception);
     }
-    catch (\Drupal\Core\Entity\EntityStorageException $exception) {
-      return new JsonResponse([
-        'success' => FALSE,
-        'message' => 'The question identifier must be unique',
-      ], 400);
-    }
-  }
 
-  private function getQuestionAnswers(int $question_id): array {
-    $assignments = $this->entityTypeManager()->getStorage('voting_answer_assignment')->loadByProperties([
-      'question_id' => $question_id,
+    return new JsonResponse([
+      'success' => TRUE,
+      'message' => 'Answer created successfully',
+      'id' => $answer->id(),
     ]);
-
-    $answers = [];
-    foreach ($assignments as $assignment) {
-      $answer = $assignment->get('answer_id')->entity;
-      if (!$answer) {
-        continue;
-      }
-
-      $answers[] = [
-        'id' => $answer->id(),
-        'title' => $answer->label(),
-        'votes' => (int) $assignment->get('vote_count')->value,
-      ];
-    }
-
-    return $answers;
   }
 
-  public static function access(Request $request, AccountInterface $account): AccessResult {
-    return \Drupal::service('voting_system.token_auth_service')->checkAccess($request);
-  }
-
-  public static function adminAccess(Request $request, AccountInterface $account): AccessResult {
-    return \Drupal::service('voting_system.token_auth_service')->checkAdminAccess($request);
-  }
 }

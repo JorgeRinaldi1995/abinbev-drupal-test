@@ -1,52 +1,43 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\voting_system\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\voting_system\Service\VoteResultsService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\voting_system\Service\VoteService;
 
 class VotingResultsController extends ControllerBase implements ContainerInjectionInterface {
 
-  protected VoteService $voteService;
-
-  public function __construct(VoteService $voteService) {
-    $this->voteService = $voteService;
-  }
+  public function __construct(
+    protected readonly VoteResultsService $voteResultsService,
+  ) {}
 
   public static function create(ContainerInterface $container): static {
     return new static(
-      $container->get('voting_system.vote_service')
+      $container->get('voting_system.vote_results_service')
     );
   }
 
   public function resultsPage(): array {
-    $build = [
-      '#type' => 'markup',
-      '#markup' => '',
-    ];
-
-    $questions = \Drupal::entityTypeManager()
+    $questions = $this->entityTypeManager()
       ->getStorage('voting_question')
       ->loadMultiple();
 
     if (empty($questions)) {
-      $build['#markup'] = $this->t('No questions available.');
-      return $build;
+      return [
+        '#type' => 'markup',
+        '#markup' => $this->t('No questions available.'),
+      ];
     }
 
+    $build = [];
     foreach ($questions as $question) {
-      $results = $this->voteService->getResults($question->id());
-
-      $header = [
-        $this->t('Answer'),
-        $this->t('Votes'),
-        $this->t('Percentage'),
-      ];
+      $results = $this->voteResultsService->getResults($question->id());
 
       $rows = [];
-
       foreach ($results['answers'] as $answer) {
         $rows[] = [
           $answer['title'],
@@ -61,7 +52,7 @@ class VotingResultsController extends ControllerBase implements ContainerInjecti
         '#open' => TRUE,
         'table' => [
           '#type' => 'table',
-          '#header' => $header,
+          '#header' => [$this->t('Answer'), $this->t('Votes'), $this->t('Percentage')],
           '#rows' => $rows,
         ],
       ];
@@ -69,4 +60,5 @@ class VotingResultsController extends ControllerBase implements ContainerInjecti
 
     return $build;
   }
+
 }

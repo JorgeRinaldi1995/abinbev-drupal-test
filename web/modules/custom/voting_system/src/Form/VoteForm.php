@@ -84,9 +84,9 @@ class VoteForm extends FormBase {
 
     try {
       $this->voteService->submitVoteByAssignment($assignment_id, (int) $this->questionId, (int) $this->currentUser->id());
-      \Drupal::messenger()->addMessage($this->t('Your vote has been recorded.'));
+      $this->messenger()->addMessage($this->t('Your vote has been recorded.'));
     } catch (\Throwable $e) {
-      \Drupal::messenger()->addError($e->getMessage());
+      $this->messenger()->addError($e->getMessage());
     }
   }
 }
