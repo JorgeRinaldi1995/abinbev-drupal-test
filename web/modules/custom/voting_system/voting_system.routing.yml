@@ -118,6 +118,14 @@ voting_system.api.questions:
   requirements:
     _voting_system_api_access: 'user'
 
+voting_system.api.question:
+  path: '/api/voting/question/{question_id}'
+  methods: [GET]
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::getQuestion'
+  requirements:
+    _voting_system_api_access: 'user'
+
 voting_system.api.create_question:
   path: '/api/voting/question'
   methods: [POST]

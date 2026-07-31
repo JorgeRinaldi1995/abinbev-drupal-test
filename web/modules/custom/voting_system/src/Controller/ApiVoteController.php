@@ -8,6 +8,7 @@ use Drupal\voting_system\Exception\AnswerNotFoundException;
 use Drupal\voting_system\Exception\AnswerQuestionMismatchException;
 use Drupal\voting_system\Exception\DuplicateVoteException;
 use Drupal\voting_system\Exception\QuestionNotFoundException;
+use Drupal\voting_system\Exception\VoteRequiredException;
 use Drupal\voting_system\Service\TokenAuthService;
 use Drupal\voting_system\Service\VoteResultsService;
 use Drupal\voting_system\Service\VoteService;
@@ -57,11 +58,16 @@ class ApiVoteController extends ApiControllerBase {
     return new JsonResponse(['success' => TRUE, 'message' => 'Vote recorded.']);
   }
 
-  public function getResults(string $question_id): JsonResponse {
-    try {
-      return new JsonResponse($this->voteResultsService->getResults($question_id));
+  public function getResults(Request $request, string $question_id): JsonResponse {
+    $user = $this->tokenAuthService->getUserFromToken($request);
+    if (!$user) {
+      return $this->jsonError('Unauthorized', 401);
     }
-    catch (QuestionNotFoundException $exception) {
+
+    try {
+      return new JsonResponse($this->voteResultsService->getResultsForVoter($question_id, (int) $user->id()));
+    }
+    catch (QuestionNotFoundException|VoteRequiredException $exception) {
       return $this->errorResponse($exception);
     }
   }

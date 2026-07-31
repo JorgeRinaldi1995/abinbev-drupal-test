@@ -8,6 +8,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\voting_system\Entity\VotingAnswer;
 use Drupal\voting_system\Entity\VotingQuestion;
 use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
+use Drupal\voting_system\Exception\QuestionNotFoundException;
 
 class VotingManagerService {
 
@@ -32,6 +33,21 @@ class VotingManagerService {
       fn (VotingQuestion $question) => $this->buildQuestionData($question),
       $this->loadActiveQuestions()
     );
+  }
+
+  /**
+   * A single active question as a plain array, by numeric ID or question_id.
+   *
+   * @throws \Drupal\voting_system\Exception\QuestionNotFoundException
+   */
+  public function getQuestionData(int|string $question_identifier): array {
+    $question = $this->questionResolver->resolve($question_identifier);
+
+    if (!$question->get('status')->value) {
+      throw new QuestionNotFoundException(sprintf('Question "%s" not found.', $question_identifier));
+    }
+
+    return $this->buildQuestionData($question);
   }
 
   /**

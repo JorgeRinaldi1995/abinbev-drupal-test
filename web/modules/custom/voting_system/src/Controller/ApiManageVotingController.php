@@ -30,6 +30,15 @@ class ApiManageVotingController extends ApiControllerBase {
     return new JsonResponse($this->votingManager->getActiveQuestionsData());
   }
 
+  public function getQuestion(string $question_id): JsonResponse {
+    try {
+      return new JsonResponse($this->votingManager->getQuestionData($question_id));
+    }
+    catch (QuestionNotFoundException $exception) {
+      return $this->errorResponse($exception);
+    }
+  }
+
   public function createQuestion(Request $request): JsonResponse {
     $data = $this->getJsonData($request);
     $title = $data['title'] ?? NULL;
