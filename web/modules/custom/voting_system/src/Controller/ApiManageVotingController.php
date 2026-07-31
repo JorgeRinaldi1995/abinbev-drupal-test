@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\voting_system\Controller;
 
-use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
 use Drupal\voting_system\Exception\QuestionNotFoundException;
 use Drupal\voting_system\Service\VotingManagerService;
@@ -18,13 +17,11 @@ use Symfony\Component\HttpFoundation\Request;
 class ApiManageVotingController extends ApiControllerBase {
 
   public function __construct(
-    protected readonly AccountProxyInterface $currentUser,
     protected readonly VotingManagerService $votingManager,
   ) {}
 
   public static function create(ContainerInterface $container): static {
     return new static(
-      $container->get('current_user'),
       $container->get('voting_system.voting_manager')
     );
   }
@@ -44,7 +41,7 @@ class ApiManageVotingController extends ApiControllerBase {
     }
 
     try {
-      $question = $this->votingManager->createQuestion($title, $question_id, (bool) $show_percent, (int) $this->currentUser->id());
+      $question = $this->votingManager->createQuestion($title, $question_id, (bool) $show_percent, (int) $this->currentUser()->id());
     }
     catch (DuplicateQuestionIdentifierException|\InvalidArgumentException $exception) {
       return $this->errorResponse($exception);
