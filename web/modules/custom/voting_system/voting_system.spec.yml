@@ -1,0 +1,423 @@
+openapi: 3.0.3
+info:
+  title: Voting System API
+  description: >
+    API do módulo customizado `voting_system`. Permite obter perguntas
+    disponíveis, consultar uma pergunta específica, registrar votos e
+    consultar resultados. Endpoints administrativos permitem criar
+    perguntas e respostas.
+  version: '1.0.0'
+servers:
+  - url: 'https://{host}'
+    variables:
+      host:
+        default: abinbev-drupal-test.ddev.site
+        description: Host do ambiente (ex. site local via DDEV ou produção)
+
+tags:
+  - name: Auth
+    description: Obtenção do token de acesso (Bearer)
+  - name: Questions
+    description: Consulta e administração de perguntas
+  - name: Voting
+    description: Registro de votos e consulta de resultados
+
+security:
+  - bearerAuth: []
+
+paths:
+  /oauth/token:
+    post:
+      operationId: getToken
+      tags: [Auth]
+      summary: Obter token de acesso
+      description: >
+        Autentica um usuário Drupal por username/senha e devolve um bearer
+        token (expira em 1 hora) a ser usado nos demais endpoints via
+        header `Authorization: Bearer {token}`. Envie os dados como
+        `application/x-www-form-urlencoded`, não como JSON.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+                  example: changeme
+      responses:
+        '200':
+          description: Token gerado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+
+  /api/voting/questions:
+    get:
+      operationId: listActiveQuestions
+      tags: [Questions]
+      summary: Listar perguntas ativas
+      description: Retorna todas as perguntas ativas disponíveis para votação, cada uma com suas respostas.
+      responses:
+        '200':
+          description: Lista de perguntas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Question'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/voting/question/{question_id}:
+    get:
+      operationId: getQuestion
+      tags: [Questions]
+      summary: Obter uma pergunta específica
+      description: >
+        Retorna uma única pergunta ativa, buscando por ID numérico da
+        entidade ou pelo identificador único `question_id`.
+      parameters:
+        - $ref: '#/components/parameters/QuestionIdPath'
+      responses:
+        '200':
+          description: Pergunta encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/voting/question:
+    post:
+      operationId: createQuestion
+      tags: [Questions]
+      summary: Criar pergunta (admin)
+      description: Requer token de um usuário com papel de administrador.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, question_id]
+              properties:
+                title:
+                  type: string
+                  example: Qual sua cerveja favorita?
+                question_id:
+                  type: string
+                  description: Identificador único e legível da pergunta.
+                  example: cerveja-favorita
+                show_percent:
+                  type: boolean
+                  description: Se os percentuais de voto devem ser exibidos nos resultados.
+                  default: true
+      responses:
+        '200':
+          description: Pergunta criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: O question_id informado já existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/voting/answer:
+    post:
+      operationId: createAnswer
+      tags: [Questions]
+      summary: Criar resposta para uma pergunta (admin)
+      description: Requer token de um usuário com papel de administrador.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, question_id]
+              properties:
+                title:
+                  type: string
+                  example: Lager
+                description:
+                  type: string
+                  example: Cerveja leve e refrescante
+                question_id:
+                  type: string
+                  description: ID numérico ou question_id da pergunta.
+                  example: cerveja-favorita
+      responses:
+        '200':
+          description: Resposta criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/vote/{question_id}:
+    post:
+      operationId: submitVote
+      tags: [Voting]
+      summary: Registrar voto
+      parameters:
+        - $ref: '#/components/parameters/QuestionIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answer_id]
+              properties:
+                answer_id:
+                  type: integer
+                  example: 3
+      responses:
+        '200':
+          description: Voto registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Vote recorded.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Resposta não pertence à pergunta, ou usuário já votou
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/vote-results/{question_id}:
+    get:
+      operationId: getVoteResults
+      tags: [Voting]
+      summary: Consultar resultados de uma pergunta
+      description: >
+        Só retorna resultados para quem já votou nessa pergunta. O campo
+        `percent` de cada resposta só aparece se `show_percent` da pergunta
+        estiver ativo.
+      parameters:
+        - $ref: '#/components/parameters/QuestionIdPath'
+      responses:
+        '200':
+          description: Resultados da votação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteResults'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Usuário ainda não votou nesta pergunta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: Token obtido em POST /oauth/token, enviado como `Authorization Bearer {token}`.
+
+  parameters:
+    QuestionIdPath:
+      name: question_id
+      in: path
+      required: true
+      description: ID numérico da entidade ou o `question_id` (string) da pergunta.
+      schema:
+        type: string
+      example: cerveja-favorita
+
+  responses:
+    Unauthorized:
+      description: Token ausente, inválido ou expirado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Token válido, mas sem permissão de administrador
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadRequest:
+      description: Payload ausente ou inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Pergunta ou resposta não encontrada
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: 9f8c1e2d3b4a5678...
+        token_type:
+          type: string
+          example: Bearer
+
+    Answer:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3
+        title:
+          type: string
+          example: Lager
+        votes:
+          type: integer
+          example: 12
+
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Qual sua cerveja favorita?
+        question_id:
+          type: string
+          example: cerveja-favorita
+        show_percent:
+          type: boolean
+          example: true
+        status:
+          type: boolean
+          example: true
+        created:
+          type: integer
+          description: Timestamp Unix
+          example: 1753900800
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Answer'
+
+    VoteResultAnswer:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3
+        title:
+          type: string
+          example: Lager
+        votes:
+          type: integer
+          example: 12
+        percent:
+          type: number
+          description: Presente apenas quando show_percent da pergunta é true.
+          example: 60
+
+    VoteResults:
+      type: object
+      properties:
+        show_percent:
+          type: boolean
+          example: true
+        total_votes:
+          type: integer
+          example: 20
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/VoteResultAnswer'
+
+    CreatedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Question created successfully
+        id:
+          type: integer
+          example: 1
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: Question "cerveja-favorita" not found.
+
+    ErrorSimple:
+      type: object
+      description: Formato de erro usado apenas por /oauth/token.
+      properties:
+        error:
+          type: string
+          example: Invalid credentials
