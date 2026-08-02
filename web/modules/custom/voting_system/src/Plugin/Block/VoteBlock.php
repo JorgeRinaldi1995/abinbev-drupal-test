@@ -3,6 +3,7 @@
 namespace Drupal\voting_system\Plugin\Block;
 
 use Drupal\Core\Block\BlockBase;
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -151,13 +152,36 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
       ->getStorage('voting_question')
       ->load($question_id);
 
+    // Whether the current visitor has voted (and thus sees results instead
+    // of the ballot) depends on who they are, so the render cache must vary
+    // per user — without this, the first voter's outcome gets cached and
+    // served to everyone else until the cache is cleared.
+    $cache = new CacheableMetadata();
+    $cache->addCacheContexts(['user']);
+    $cache->addCacheTags(['voting_question_list']);
+
+    if ($question) {
+      $cache->addCacheableDependency($question);
+    }
+
     if (!$question || !$question->get('status')->value) {
-      return ['#markup' => $this->t('The selected question is not available.')];
+      $build = ['#markup' => $this->t('The selected question is not available.')];
+      $cache->applyTo($build);
+      return $build;
     }
 
     $assignments = $this->entityTypeManager
       ->getStorage('voting_answer_assignment')
       ->loadByProperties(['question_id' => $question->id()]);
+
+    // Each assignment's own cache tag is invalidated when its vote_count
+    // changes, and vote_record_list is invalidated whenever anyone casts a
+    // new vote — together they keep counts, percentages and the "already
+    // voted" state correct for every cached variation.
+    foreach ($assignments as $assignment) {
+      $cache->addCacheableDependency($assignment);
+    }
+    $cache->addCacheTags(['vote_record_list']);
 
     $has_user_vote = FALSE;
     foreach ($assignments as $assignment) {
@@ -189,15 +213,19 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
           ];
         }
 
-        return [
+        $build = [
           '#type' => 'table',
           '#header' => $header,
           '#rows' => $rows,
           '#caption' => $this->t('Results for: @title', ['@title' => $question->label()]),
         ];
+        $cache->applyTo($build);
+        return $build;
       }
 
-      return ['#markup' => $this->t('You have already voted.')];
+      $build = ['#markup' => $this->t('You have already voted.')];
+      $cache->applyTo($build);
+      return $build;
     }
 
     $build = [
@@ -245,6 +273,7 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
 
     $build['form'] = $this->formBuilder->getForm('Drupal\voting_system\Form\VoteForm', $question->id(), $options);
 
+    $cache->applyTo($build);
     return $build;
   }
 }
