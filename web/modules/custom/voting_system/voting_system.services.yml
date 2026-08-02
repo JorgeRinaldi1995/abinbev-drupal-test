@@ -11,9 +11,13 @@ services:
     class: Drupal\voting_system\Service\QuestionResolverService
     arguments: ['@entity_type.manager']
 
+  voting_system.answer_image_downloader:
+    class: Drupal\voting_system\Service\AnswerImageDownloaderService
+    arguments: ['@http_client', '@file.repository', '@file_system']
+
   voting_system.voting_manager:
     class: Drupal\voting_system\Service\VotingManagerService
-    arguments: ['@entity_type.manager', '@voting_system.question_resolver']
+    arguments: ['@entity_type.manager', '@voting_system.question_resolver', '@voting_system.answer_image_downloader', '@file_url_generator']
 
   voting_system.vote_service:
     class: Drupal\voting_system\Service\VoteService
@@ -25,9 +29,14 @@ services:
 
   voting_system.access_check:
     class: Drupal\voting_system\Access\VotingApiAccessCheck
-    arguments: ['@voting_system.token_auth_service']
     tags:
       - { name: access_check, applies_to: _voting_system_api_access }
+
+  voting_system.authentication.token:
+    class: Drupal\voting_system\Authentication\Provider\TokenAuthenticationProvider
+    arguments: ['@voting_system.token_auth_service']
+    tags:
+      - { name: authentication_provider, provider_id: 'voting_system_token', priority: 100 }
 
   voting_system.unique_question_identifier_validator:
     class: Drupal\voting_system\Plugin\Validation\Constraint\UniqueQuestionIdentifierConstraintValidator
@@ -44,3 +53,4 @@ services:
   Drupal\voting_system\Service\VotingManagerService: '@voting_system.voting_manager'
   Drupal\voting_system\Service\VoteService: '@voting_system.vote_service'
   Drupal\voting_system\Service\VoteResultsService: '@voting_system.vote_results_service'
+  Drupal\voting_system\Service\AnswerImageDownloaderService: '@voting_system.answer_image_downloader'

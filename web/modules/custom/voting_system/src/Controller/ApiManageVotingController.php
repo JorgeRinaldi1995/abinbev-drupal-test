@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\voting_system\Controller;
 
 use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
+use Drupal\voting_system\Exception\InvalidAnswerImageException;
 use Drupal\voting_system\Exception\QuestionNotFoundException;
 use Drupal\voting_system\Service\VotingManagerService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -63,20 +64,48 @@ class ApiManageVotingController extends ApiControllerBase {
     ]);
   }
 
+  public function updateQuestion(Request $request, string $question_id): JsonResponse {
+    $data = $this->getJsonData($request);
+
+    if ($data === []) {
+      return $this->jsonError('Provide at least one field to update (title, question_id, show_percent, status).', 400);
+    }
+
+    try {
+      $question = $this->votingManager->updateQuestion(
+        $question_id,
+        title: array_key_exists('title', $data) ? (string) $data['title'] : NULL,
+        new_question_id: array_key_exists('question_id', $data) ? (string) $data['question_id'] : NULL,
+        show_percent: array_key_exists('show_percent', $data) ? (bool) $data['show_percent'] : NULL,
+        status: array_key_exists('status', $data) ? (bool) $data['status'] : NULL,
+      );
+    }
+    catch (QuestionNotFoundException|DuplicateQuestionIdentifierException|\InvalidArgumentException $exception) {
+      return $this->errorResponse($exception);
+    }
+
+    return new JsonResponse([
+      'success' => TRUE,
+      'message' => 'Question updated successfully',
+      'id' => $question->id(),
+    ]);
+  }
+
   public function createAnswer(Request $request): JsonResponse {
     $data = $this->getJsonData($request);
     $title = $data['title'] ?? NULL;
     $question_id = $data['question_id'] ?? NULL;
     $description = $data['description'] ?? '';
+    $image_url = $data['img_url'] ?? NULL;
 
     if (!$title || !$question_id) {
       return $this->jsonError('Missing title or question_id.', 400);
     }
 
     try {
-      $answer = $this->votingManager->createAnswer($title, $description, $question_id);
+      $answer = $this->votingManager->createAnswer($title, $description, $question_id, $image_url);
     }
-    catch (QuestionNotFoundException $exception) {
+    catch (QuestionNotFoundException|InvalidAnswerImageException $exception) {
       return $this->errorResponse($exception);
     }
 

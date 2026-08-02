@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Drupal\voting_system\Service;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\File\FileUrlGeneratorInterface;
+use Drupal\file\FileInterface;
 use Drupal\voting_system\Entity\VotingAnswer;
 use Drupal\voting_system\Entity\VotingQuestion;
 use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
@@ -15,6 +17,8 @@ class VotingManagerService {
   public function __construct(
     protected readonly EntityTypeManagerInterface $entityTypeManager,
     protected readonly QuestionResolverService $questionResolver,
+    protected readonly AnswerImageDownloaderService $answerImageDownloader,
+    protected readonly FileUrlGeneratorInterface $fileUrlGenerator,
   ) {}
 
   public function loadActiveQuestions(): array {
@@ -76,15 +80,68 @@ class VotingManagerService {
   }
 
   /**
+   * Partially updates a question. Only non-null arguments are changed.
+   *
    * @throws \Drupal\voting_system\Exception\QuestionNotFoundException
+   * @throws \InvalidArgumentException
+   * @throws \Drupal\voting_system\Exception\DuplicateQuestionIdentifierException
    */
-  public function createAnswer(string $title, string $description, int|string $question_identifier): VotingAnswer {
+  public function updateQuestion(
+    int|string $question_identifier,
+    ?string $title = NULL,
+    ?string $new_question_id = NULL,
+    ?bool $show_percent = NULL,
+    ?bool $status = NULL,
+  ): VotingQuestion {
     $question = $this->questionResolver->resolve($question_identifier);
 
-    $answer = VotingAnswer::create([
+    if ($title !== NULL) {
+      $question->set('title', $title);
+    }
+
+    if ($new_question_id !== NULL) {
+      $normalized_question_id = trim($new_question_id);
+      if ($normalized_question_id === '') {
+        throw new \InvalidArgumentException('The question identifier cannot be empty.');
+      }
+
+      $existing = $this->questionResolver->findByIdentifier($normalized_question_id);
+      if ($existing && (int) $existing->id() !== (int) $question->id()) {
+        throw new DuplicateQuestionIdentifierException('The provided question identifier already exists.');
+      }
+
+      $question->set('question_id', $normalized_question_id);
+    }
+
+    if ($show_percent !== NULL) {
+      $question->set('show_percent', $show_percent);
+    }
+
+    if ($status !== NULL) {
+      $question->set('status', $status);
+    }
+
+    $question->save();
+    return $question;
+  }
+
+  /**
+   * @throws \Drupal\voting_system\Exception\QuestionNotFoundException
+   * @throws \Drupal\voting_system\Exception\InvalidAnswerImageException
+   */
+  public function createAnswer(string $title, string $description, int|string $question_identifier, ?string $image_url = NULL): VotingAnswer {
+    $question = $this->questionResolver->resolve($question_identifier);
+
+    $values = [
       'title' => $title,
       'description' => $description,
-    ]);
+    ];
+
+    if ($image_url !== NULL) {
+      $values['image'] = $this->answerImageDownloader->download($image_url);
+    }
+
+    $answer = VotingAnswer::create($values);
     $answer->save();
 
     $this->entityTypeManager->getStorage('voting_answer_assignment')->create([
@@ -94,6 +151,18 @@ class VotingManagerService {
     ])->save();
 
     return $answer;
+  }
+
+  /**
+   * Absolute URL for an answer's image, or NULL if it has none.
+   */
+  public function getAnswerImageUrl(VotingAnswer $answer): ?string {
+    $image = $answer->get('image')->entity;
+    if (!$image instanceof FileInterface) {
+      return NULL;
+    }
+
+    return $this->fileUrlGenerator->generateAbsoluteString($image->getFileUri());
   }
 
   private function buildQuestionData(VotingQuestion $question): array {
@@ -124,6 +193,7 @@ class VotingManagerService {
         'id' => $answer->id(),
         'title' => $answer->label(),
         'votes' => (int) $assignment->get('vote_count')->value,
+        'img_url' => $this->getAnswerImageUrl($answer),
       ];
     }
 

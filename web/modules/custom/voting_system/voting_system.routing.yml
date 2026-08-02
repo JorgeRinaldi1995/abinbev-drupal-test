@@ -93,6 +93,15 @@ oauth_api.token:
   methods: [POST]
   requirements:
     _access: 'TRUE'
+  options:
+    # Tolerate a stray Authorization: Bearer header on this route (e.g. a
+    # Postman collection/folder-level auth that gets inherited here too).
+    # Without this, TokenAuthenticationProvider still *applies* (the header
+    # is present) but isn't allowed on a route with no _auth option, so
+    # Drupal's AuthenticationSubscriber denies the request with a 403
+    # before the controller ever runs — regardless of the username/password
+    # in the body.
+    _auth: ['voting_system_token']
 
 voting_system.api.vote:
   path: '/api/vote/{question_id}'
@@ -101,6 +110,8 @@ voting_system.api.vote:
     _controller: '\Drupal\voting_system\Controller\ApiVoteController::submitVote'
   requirements:
     _voting_system_api_access: 'user'
+  options:
+    _auth: ['voting_system_token']
 
 voting_system.api.vote_results:
   path: '/api/vote-results/{question_id}'
@@ -109,6 +120,8 @@ voting_system.api.vote_results:
     _controller: '\Drupal\voting_system\Controller\ApiVoteController::getResults'
   requirements:
     _voting_system_api_access: 'user'
+  options:
+    _auth: ['voting_system_token']
 
 voting_system.api.questions:
   path: '/api/voting/questions'
@@ -117,6 +130,8 @@ voting_system.api.questions:
     _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::listActiveQuestions'
   requirements:
     _voting_system_api_access: 'user'
+  options:
+    _auth: ['voting_system_token']
 
 voting_system.api.question:
   path: '/api/voting/question/{question_id}'
@@ -125,6 +140,18 @@ voting_system.api.question:
     _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::getQuestion'
   requirements:
     _voting_system_api_access: 'user'
+  options:
+    _auth: ['voting_system_token']
+
+voting_system.api.update_question:
+  path: '/api/voting/question/{question_id}'
+  methods: [PATCH]
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::updateQuestion'
+  requirements:
+    _voting_system_api_access: 'admin'
+  options:
+    _auth: ['voting_system_token']
 
 voting_system.api.create_question:
   path: '/api/voting/question'
@@ -133,6 +160,8 @@ voting_system.api.create_question:
     _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::createQuestion'
   requirements:
     _voting_system_api_access: 'admin'
+  options:
+    _auth: ['voting_system_token']
 
 voting_system.api.create_answer:
   path: '/api/voting/answer'
@@ -141,3 +170,5 @@ voting_system.api.create_answer:
     _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::createAnswer'
   requirements:
     _voting_system_api_access: 'admin'
+  options:
+    _auth: ['voting_system_token']

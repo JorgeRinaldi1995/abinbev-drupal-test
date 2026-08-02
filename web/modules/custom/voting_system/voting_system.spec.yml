@@ -105,6 +105,56 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: updateQuestion
+      tags: [Questions]
+      summary: Atualizar pergunta (admin)
+      description: >
+        Requer token de administrador. Atualização parcial: envie apenas os
+        campos que deseja alterar. Ao menos um campo é obrigatório.
+      parameters:
+        - $ref: '#/components/parameters/QuestionIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                title:
+                  type: string
+                  example: Qual sua cerveja favorita afinal?
+                question_id:
+                  type: string
+                  description: Novo identificador único, se quiser renomear.
+                  example: cerveja-favorita-v2
+                show_percent:
+                  type: boolean
+                status:
+                  type: boolean
+                  description: Ativa ou desativa a pergunta.
+      responses:
+        '200':
+          description: Pergunta atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: O novo question_id informado já existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/voting/question:
     post:
@@ -156,7 +206,10 @@ paths:
       operationId: createAnswer
       tags: [Questions]
       summary: Criar resposta para uma pergunta (admin)
-      description: Requer token de um usuário com papel de administrador.
+      description: >
+        Requer token de um usuário com papel de administrador. Se `img_url`
+        for informado, a imagem é baixada e armazenada como arquivo
+        gerenciado do Drupal (limite de 5MB; png, jpg, webp ou gif).
       requestBody:
         required: true
         content:
@@ -175,15 +228,32 @@ paths:
                   type: string
                   description: ID numérico ou question_id da pergunta.
                   example: cerveja-favorita
+                img_url:
+                  type: string
+                  format: uri
+                  description: URL pública de uma imagem (png, jpg, webp ou gif, até 5MB).
+                  example: https://example.com/images/lager.png
       responses:
         '200':
           description: Resposta criada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreatedResponse'
+                allOf:
+                  - $ref: '#/components/schemas/CreatedResponse'
+                  - type: object
+                    properties:
+                      img_url:
+                        type: string
+                        format: uri
+                        nullable: true
+                        description: URL final da imagem armazenada, ou null se nenhuma foi enviada.
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Payload inválido, ou img_url malformada / não aponta para uma imagem suportada / excede 5MB
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -329,6 +399,11 @@ components:
         title:
           type: string
           example: Lager
+        img_url:
+          type: string
+          format: uri
+          nullable: true
+          example: https://example.com/sites/default/files/voting_system_answers/580ba8970c7dc8db.png
         votes:
           type: integer
           example: 12

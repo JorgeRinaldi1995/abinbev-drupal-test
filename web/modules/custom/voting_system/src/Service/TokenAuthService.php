@@ -2,8 +2,6 @@
 
 namespace Drupal\voting_system\Service;
 
-use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Session\AccountInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\user\Entity\User;
 
@@ -26,14 +24,4 @@ class TokenAuthService {
     return $uid ? User::load($uid) : null;
   }
 
-  public function checkAccess(Request $request): AccessResult {
-    return $this->getUserFromToken($request) ? AccessResult::allowed() : AccessResult::forbidden();
-  }
-
-  public function checkAdminAccess(Request $request): AccessResult {
-    $user = $this->getUserFromToken($request);
-    return ($user && in_array('administrator', $user->getRoles()))
-      ? AccessResult::allowed()
-      : AccessResult::forbidden();
-  }
 }
