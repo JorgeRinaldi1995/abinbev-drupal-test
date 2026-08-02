@@ -172,3 +172,14 @@ voting_system.api.create_answer:
     _voting_system_api_access: 'admin'
   options:
     _auth: ['voting_system_token']
+
+voting_system.api.update_answer:
+  path: '/api/voting/answer/{answer_id}'
+  methods: [PATCH]
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::updateAnswer'
+  requirements:
+    _voting_system_api_access: 'admin'
+    answer_id: '\d+'
+  options:
+    _auth: ['voting_system_token']

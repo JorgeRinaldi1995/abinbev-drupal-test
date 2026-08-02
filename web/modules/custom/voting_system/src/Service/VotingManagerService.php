@@ -9,6 +9,8 @@ use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\file\FileInterface;
 use Drupal\voting_system\Entity\VotingAnswer;
 use Drupal\voting_system\Entity\VotingQuestion;
+use Drupal\voting_system\Exception\AnswerLinkedToQuestionException;
+use Drupal\voting_system\Exception\AnswerNotFoundException;
 use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
 use Drupal\voting_system\Exception\QuestionNotFoundException;
 
@@ -150,6 +152,50 @@ class VotingManagerService {
       'vote_count' => 0,
     ])->save();
 
+    return $answer;
+  }
+
+  /**
+   * Partially updates an answer. Only allowed while it isn't linked to any
+   * question yet — once an answer is assigned, editing it here would
+   * silently change what people already voted on (answers are reusable
+   * across questions, so it could affect more than one question at once).
+   *
+   * @throws \Drupal\voting_system\Exception\AnswerNotFoundException
+   * @throws \Drupal\voting_system\Exception\AnswerLinkedToQuestionException
+   * @throws \Drupal\voting_system\Exception\InvalidAnswerImageException
+   */
+  public function updateAnswer(
+    int $answer_id,
+    ?string $title = NULL,
+    ?string $description = NULL,
+    ?string $image_url = NULL,
+  ): VotingAnswer {
+    $answer = $this->entityTypeManager->getStorage('voting_answer')->load($answer_id);
+    if (!$answer instanceof VotingAnswer) {
+      throw new AnswerNotFoundException(sprintf('Answer %d not found.', $answer_id));
+    }
+
+    $assignments = $this->entityTypeManager->getStorage('voting_answer_assignment')->loadByProperties([
+      'answer_id' => $answer_id,
+    ]);
+    if (!empty($assignments)) {
+      throw new AnswerLinkedToQuestionException('This answer is linked to a question and cannot be updated.');
+    }
+
+    if ($title !== NULL) {
+      $answer->set('title', $title);
+    }
+
+    if ($description !== NULL) {
+      $answer->set('description', $description);
+    }
+
+    if ($image_url !== NULL) {
+      $answer->set('image', $this->answerImageDownloader->download($image_url));
+    }
+
+    $answer->save();
     return $answer;
   }
 

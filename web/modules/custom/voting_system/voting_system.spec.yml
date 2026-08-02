@@ -239,15 +239,7 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/CreatedResponse'
-                  - type: object
-                    properties:
-                      img_url:
-                        type: string
-                        format: uri
-                        nullable: true
-                        description: URL final da imagem armazenada, ou null se nenhuma foi enviada.
+                $ref: '#/components/schemas/CreatedResponse'
         '400':
           description: Payload inválido, ou img_url malformada / não aponta para uma imagem suportada / excede 5MB
           content:
@@ -260,6 +252,77 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/voting/answer/{answer_id}:
+    patch:
+      operationId: updateAnswer
+      tags: [Questions]
+      summary: Atualizar resposta (admin)
+      description: >
+        Requer token de administrador. Atualização parcial: envie apenas os
+        campos que deseja alterar (ao menos um é obrigatório). Só é permitida
+        enquanto a resposta não estiver vinculada a nenhuma pergunta — como
+        respostas são reutilizáveis entre perguntas, editar uma já vinculada
+        mudaria retroativamente o que os usuários já votaram.
+      parameters:
+        - name: answer_id
+          in: path
+          required: true
+          description: ID numérico da resposta.
+          schema:
+            type: integer
+          example: 3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                title:
+                  type: string
+                  example: Lager (atualizado)
+                description:
+                  type: string
+                  example: Nova descrição
+                img_url:
+                  type: string
+                  format: uri
+                  description: Substitui a imagem atual pela baixada desta URL.
+                  example: https://example.com/images/lager-v2.png
+      responses:
+        '200':
+          description: Resposta atualizada
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CreatedResponse'
+                  - type: object
+                    properties:
+                      img_url:
+                        type: string
+                        format: uri
+                        nullable: true
+        '400':
+          description: Payload vazio, ou img_url malformada / não aponta para uma imagem suportada / excede 5MB
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: A resposta já está vinculada a uma pergunta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/vote/{question_id}:
     post:

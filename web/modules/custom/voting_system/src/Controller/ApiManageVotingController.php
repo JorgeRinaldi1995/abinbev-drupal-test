@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\voting_system\Controller;
 
+use Drupal\voting_system\Exception\AnswerLinkedToQuestionException;
+use Drupal\voting_system\Exception\AnswerNotFoundException;
 use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
 use Drupal\voting_system\Exception\InvalidAnswerImageException;
 use Drupal\voting_system\Exception\QuestionNotFoundException;
@@ -113,6 +115,33 @@ class ApiManageVotingController extends ApiControllerBase {
       'success' => TRUE,
       'message' => 'Answer created successfully',
       'id' => $answer->id(),
+    ]);
+  }
+
+  public function updateAnswer(Request $request, string $answer_id): JsonResponse {
+    $data = $this->getJsonData($request);
+
+    if ($data === []) {
+      return $this->jsonError('Provide at least one field to update (title, description, img_url).', 400);
+    }
+
+    try {
+      $answer = $this->votingManager->updateAnswer(
+        (int) $answer_id,
+        title: array_key_exists('title', $data) ? (string) $data['title'] : NULL,
+        description: array_key_exists('description', $data) ? (string) $data['description'] : NULL,
+        image_url: array_key_exists('img_url', $data) ? (string) $data['img_url'] : NULL,
+      );
+    }
+    catch (AnswerNotFoundException|AnswerLinkedToQuestionException|InvalidAnswerImageException $exception) {
+      return $this->errorResponse($exception);
+    }
+
+    return new JsonResponse([
+      'success' => TRUE,
+      'message' => 'Answer updated successfully',
+      'id' => $answer->id(),
+      'img_url' => $this->votingManager->getAnswerImageUrl($answer),
     ]);
   }
 

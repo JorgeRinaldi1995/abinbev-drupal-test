@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\voting_system\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\voting_system\Exception\AnswerLinkedToQuestionException;
 use Drupal\voting_system\Exception\AnswerNotFoundException;
 use Drupal\voting_system\Exception\AnswerQuestionMismatchException;
 use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
@@ -37,7 +38,8 @@ abstract class ApiControllerBase extends ControllerBase {
       $exception instanceof QuestionNotFoundException,
       $exception instanceof AnswerNotFoundException => 404,
       $exception instanceof DuplicateVoteException,
-      $exception instanceof DuplicateQuestionIdentifierException => 409,
+      $exception instanceof DuplicateQuestionIdentifierException,
+      $exception instanceof AnswerLinkedToQuestionException => 409,
       $exception instanceof AnswerQuestionMismatchException,
       $exception instanceof InvalidAnswerImageException,
       $exception instanceof \InvalidArgumentException => 400,
