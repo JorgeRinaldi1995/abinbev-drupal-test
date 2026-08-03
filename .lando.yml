@@ -1,5 +1,14 @@
-name: my-lando-app
+name: abinbev-drupal-test
 recipe: drupal10
 config:
   webroot: web
   php: '8.3'
+
+services:
+  appserver:
+    overrides:
+      ports:
+        - "8080:80"
+
+  database:
+    type: mariadb:10.11
