@@ -100,6 +100,13 @@ Authentication via bearer token (`POST /oauth/token` with Drupal username/passwo
 - Listing queries load answers and images in batches (`loadMultiple`), avoiding N+1 issues.
 - Kernel tests for vote duplication and `question_id` uniqueness.
 
+### Data integrity and performance at scale
+
+- Database-level unique indexes (`voting_system.install`, `hook_update_N`): `voting_question.question_id` and `vote_record` (`user_id`, `assignment_id`) are now enforced by the database itself, not only by the entity constraint / service-level lookup — those only protect against sequential duplicates, not two concurrent requests racing past the same check before either write commits.
+- `VoteService::recordVote()` wraps the vote insert and the `vote_count` increment in a single database transaction, and the increment itself is an atomic `UPDATE ... SET vote_count = vote_count + 1` via the Database API instead of a read-then-write through the entity API (which would lose votes under concurrent writes to the same answer). A duplicate vote that still races past the in-app check is caught as a database `IntegrityConstraintViolationException` and mapped to the same `DuplicateVoteException` used for the normal case.
+- Added an index on `voting_question.status`, used by the `GET /api/voting/questions` read path (`loadByProperties(['status' => 1])`).
+- Removed a stale, non-functional `hook_schema()` implementation that had been placed under `config/install/` (Drupal never discovers `.install` files outside the module root, so it silently never ran).
+
 ## Next steps (roadmap)
 
 ### Caching, queues, and performance
