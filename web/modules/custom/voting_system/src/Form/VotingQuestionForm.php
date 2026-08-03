@@ -175,51 +175,60 @@ class VotingQuestionForm extends ContentEntityForm {
 
   /**
    * {@inheritdoc}
+   *
+   * Entity forms save in a *separate* submit handler (::save) that runs
+   * after ::submitForm in the button's #submit chain — parent::submitForm()
+   * only rebuilds $this->entity from the form values, it does not persist
+   * it. For a brand new question, $entity->id() is therefore still NULL at
+   * the end of ::submitForm(); linking answers had to wait until here,
+   * where the entity is guaranteed to already be saved (for both create
+   * and edit).
    */
-  public function submitForm(array &$form, FormStateInterface $form_state): void {
+  public function save(array $form, FormStateInterface $form_state) {
     try {
-      parent::submitForm($form, $form_state);
-
-      $entity = $this->entity;
-      if (!$entity->id()) {
-        return;
-      }
-
-      $rows = $form_state->get('answer_rows') ?: [];
-      $assignment_storage = \Drupal::entityTypeManager()->getStorage('voting_answer_assignment');
-
-      foreach ($rows as $delta) {
-        $answer_id = $form_state->getValue(['answers_wrapper', 'rows', $delta, 'answer']);
-        if (!$answer_id) {
-          continue;
-        }
-
-        $existing = $assignment_storage->loadByProperties([
-          'question_id' => $entity->id(),
-          'answer_id' => $answer_id,
-        ]);
-
-        if (!empty($existing)) {
-          continue;
-        }
-
-        $assignment = $assignment_storage->create([
-          'question_id' => $entity->id(),
-          'answer_id' => $answer_id,
-          'vote_count' => 0,
-        ]);
-        $assignment->save();
-      }
-
-      $this->messenger()->addStatus($this->t('Question created successfully.'));
+      $status = parent::save($form, $form_state);
     }
     catch (EntityStorageException $e) {
       $this->messenger()->addError($this->t('The question identifier must be unique'));
       $form_state->setRebuild(TRUE);
+      return NULL;
     }
-    catch (\Exception $e) {
-      $this->messenger()->addError($this->t('The question identifier must be unique'));
-      $form_state->setRebuild(TRUE);
+
+    $this->saveAnswerAssignments($form_state);
+    $this->messenger()->addStatus($this->t('Question created successfully.'));
+
+    return $status;
+  }
+
+  /**
+   * Creates assignments for any newly selected answers on the saved question.
+   */
+  protected function saveAnswerAssignments(FormStateInterface $form_state): void {
+    $entity = $this->entity;
+    $rows = $form_state->get('answer_rows') ?: [];
+    $assignment_storage = \Drupal::entityTypeManager()->getStorage('voting_answer_assignment');
+
+    foreach ($rows as $delta) {
+      $answer_id = $form_state->getValue(['answers_wrapper', 'rows', $delta, 'answer']);
+      if (!$answer_id) {
+        continue;
+      }
+
+      $existing = $assignment_storage->loadByProperties([
+        'question_id' => $entity->id(),
+        'answer_id' => $answer_id,
+      ]);
+
+      if (!empty($existing)) {
+        continue;
+      }
+
+      $assignment = $assignment_storage->create([
+        'question_id' => $entity->id(),
+        'answer_id' => $answer_id,
+        'vote_count' => 0,
+      ]);
+      $assignment->save();
     }
   }
 

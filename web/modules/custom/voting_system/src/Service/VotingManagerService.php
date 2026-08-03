@@ -223,27 +223,52 @@ class VotingManagerService {
     ];
   }
 
+  /**
+   * Batch-loads the answers (and their images) for a question's assignments.
+   *
+   * Avoids an N+1: without this, resolving each assignment's `answer_id`
+   * entity reference (and then each answer's `image` reference) would fire
+   * one load per row instead of two loadMultiple() calls total.
+   */
   private function getQuestionAnswersData(int $question_id): array {
     $assignments = $this->entityTypeManager->getStorage('voting_answer_assignment')->loadByProperties([
       'question_id' => $question_id,
     ]);
 
-    $answers = [];
+    $answer_ids = array_filter(array_map(
+      static fn ($assignment) => $assignment->get('answer_id')->target_id,
+      $assignments
+    ));
+    $answer_storage = $this->entityTypeManager->getStorage('voting_answer');
+    $answers = $answer_ids ? $answer_storage->loadMultiple($answer_ids) : [];
+
+    $image_ids = array_filter(array_map(
+      static fn (VotingAnswer $answer) => $answer->get('image')->target_id,
+      $answers
+    ));
+    $file_storage = $this->entityTypeManager->getStorage('file');
+    $images = $image_ids ? $file_storage->loadMultiple($image_ids) : [];
+
+    $data = [];
     foreach ($assignments as $assignment) {
-      $answer = $assignment->get('answer_id')->entity;
+      $answer_id = $assignment->get('answer_id')->target_id;
+      $answer = $answers[$answer_id] ?? NULL;
       if (!$answer) {
         continue;
       }
 
-      $answers[] = [
+      $image_id = $answer->get('image')->target_id;
+      $image = $image_id ? ($images[$image_id] ?? NULL) : NULL;
+
+      $data[] = [
         'id' => $answer->id(),
         'title' => $answer->label(),
         'votes' => (int) $assignment->get('vote_count')->value,
-        'img_url' => $this->getAnswerImageUrl($answer),
+        'img_url' => $image instanceof FileInterface ? $this->fileUrlGenerator->generateAbsoluteString($image->getFileUri()) : NULL,
       ];
     }
 
-    return $answers;
+    return $data;
   }
 
 }

@@ -10,6 +10,8 @@ use Drupal\voting_system\Entity\VotingAnswerAssignment;
 use Drupal\voting_system\Exception\AnswerNotFoundException;
 use Drupal\voting_system\Exception\AnswerQuestionMismatchException;
 use Drupal\voting_system\Exception\DuplicateVoteException;
+use Drupal\voting_system\Exception\QuestionNotActiveException;
+use Drupal\voting_system\Entity\VotingQuestion;
 
 /**
  * Records votes cast by users.
@@ -25,6 +27,7 @@ class VoteService {
    * Casts a vote for an answer, identified by question + answer IDs.
    *
    * @throws \Drupal\voting_system\Exception\QuestionNotFoundException
+   * @throws \Drupal\voting_system\Exception\QuestionNotActiveException
    * @throws \Drupal\voting_system\Exception\AnswerNotFoundException
    * @throws \Drupal\voting_system\Exception\AnswerQuestionMismatchException
    * @throws \Drupal\voting_system\Exception\DuplicateVoteException
@@ -36,6 +39,8 @@ class VoteService {
     }
 
     $question = $this->questionResolver->resolve($question_identifier);
+    $this->assertQuestionIsActive($question);
+
     $assignment = $this->findAssignment((int) $question->id(), $answer_id);
     if (!$assignment) {
       throw new AnswerQuestionMismatchException('The answer is not linked to the provided question.');
@@ -48,11 +53,13 @@ class VoteService {
    * Casts a vote for an answer, identified by its assignment ID.
    *
    * @throws \Drupal\voting_system\Exception\QuestionNotFoundException
+   * @throws \Drupal\voting_system\Exception\QuestionNotActiveException
    * @throws \Drupal\voting_system\Exception\AnswerQuestionMismatchException
    * @throws \Drupal\voting_system\Exception\DuplicateVoteException
    */
   public function submitVoteByAssignment(int $assignment_id, int|string $question_identifier, int $uid): void {
     $question = $this->questionResolver->resolve($question_identifier);
+    $this->assertQuestionIsActive($question);
 
     $assignment = $this->entityTypeManager->getStorage('voting_answer_assignment')->load($assignment_id);
     if (!$assignment instanceof VotingAnswerAssignment || (int) $assignment->get('question_id')->target_id !== (int) $question->id()) {
@@ -60,6 +67,15 @@ class VoteService {
     }
 
     $this->recordVote($assignment, $uid);
+  }
+
+  /**
+   * @throws \Drupal\voting_system\Exception\QuestionNotActiveException
+   */
+  private function assertQuestionIsActive(VotingQuestion $question): void {
+    if (!$question->get('status')->value) {
+      throw new QuestionNotActiveException('This question is not accepting votes.');
+    }
   }
 
   private function findAssignment(int $question_entity_id, int $answer_id): ?VotingAnswerAssignment {

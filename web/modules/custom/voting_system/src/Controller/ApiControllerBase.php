@@ -11,6 +11,7 @@ use Drupal\voting_system\Exception\AnswerQuestionMismatchException;
 use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
 use Drupal\voting_system\Exception\DuplicateVoteException;
 use Drupal\voting_system\Exception\InvalidAnswerImageException;
+use Drupal\voting_system\Exception\QuestionNotActiveException;
 use Drupal\voting_system\Exception\QuestionNotFoundException;
 use Drupal\voting_system\Exception\VoteRequiredException;
 use Drupal\voting_system\Trait\JsonRequestTrait;
@@ -39,7 +40,8 @@ abstract class ApiControllerBase extends ControllerBase {
       $exception instanceof AnswerNotFoundException => 404,
       $exception instanceof DuplicateVoteException,
       $exception instanceof DuplicateQuestionIdentifierException,
-      $exception instanceof AnswerLinkedToQuestionException => 409,
+      $exception instanceof AnswerLinkedToQuestionException,
+      $exception instanceof QuestionNotActiveException => 409,
       $exception instanceof AnswerQuestionMismatchException,
       $exception instanceof InvalidAnswerImageException,
       $exception instanceof \InvalidArgumentException => 400,

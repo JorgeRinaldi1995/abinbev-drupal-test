@@ -7,6 +7,7 @@ namespace Drupal\voting_system\Controller;
 use Drupal\voting_system\Exception\AnswerNotFoundException;
 use Drupal\voting_system\Exception\AnswerQuestionMismatchException;
 use Drupal\voting_system\Exception\DuplicateVoteException;
+use Drupal\voting_system\Exception\QuestionNotActiveException;
 use Drupal\voting_system\Exception\QuestionNotFoundException;
 use Drupal\voting_system\Exception\VoteRequiredException;
 use Drupal\voting_system\Service\VoteResultsService;
@@ -51,7 +52,7 @@ class ApiVoteController extends ApiControllerBase {
     try {
       $this->voteService->submitVote((int) $answer_id, $question_id, (int) $this->currentUser()->id());
     }
-    catch (QuestionNotFoundException|AnswerNotFoundException|AnswerQuestionMismatchException|DuplicateVoteException $exception) {
+    catch (QuestionNotFoundException|QuestionNotActiveException|AnswerNotFoundException|AnswerQuestionMismatchException|DuplicateVoteException $exception) {
       return $this->errorResponse($exception);
     }
 
