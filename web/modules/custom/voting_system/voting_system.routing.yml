@@ -133,6 +133,16 @@ voting_system.api.questions:
   options:
     _auth: ['voting_system_token']
 
+voting_system.api.answers:
+  path: '/api/voting/answers'
+  methods: [GET]
+  defaults:
+    _controller: '\Drupal\voting_system\Controller\ApiManageVotingController::listAnswers'
+  requirements:
+    _voting_system_api_access: 'admin'
+  options:
+    _auth: ['voting_system_token']
+
 voting_system.api.question:
   path: '/api/voting/question/{question_id}'
   methods: [GET]

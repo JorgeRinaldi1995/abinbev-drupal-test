@@ -33,6 +33,10 @@ class ApiManageVotingController extends ApiControllerBase {
     return new JsonResponse($this->votingManager->getActiveQuestionsData());
   }
 
+  public function listAnswers(): JsonResponse {
+    return new JsonResponse($this->votingManager->getAnswersData());
+  }
+
   public function getQuestion(string $question_id): JsonResponse {
     try {
       return new JsonResponse($this->votingManager->getQuestionData($question_id));

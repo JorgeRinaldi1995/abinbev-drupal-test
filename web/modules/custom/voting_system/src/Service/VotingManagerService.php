@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\voting_system\Service;
 
+use Drupal\Component\Utility\Xss;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\file\FileInterface;
@@ -200,6 +201,22 @@ class VotingManagerService {
   }
 
   /**
+   * All answers as plain arrays, ready to be JSON-encoded.
+   *
+   * Unlike the answers embedded under a question, these aren't tied to any
+   * particular assignment, so there's no per-question vote count here.
+   */
+  public function getAnswersData(): array {
+    $answers = $this->entityTypeManager->getStorage('voting_answer')->loadMultiple();
+    $images = $this->loadAnswerImages($answers);
+
+    return array_values(array_map(
+      fn (VotingAnswer $answer) => $this->buildAnswerData($answer, $this->resolveAnswerImage($answer, $images)),
+      $answers
+    ));
+  }
+
+  /**
    * Absolute URL for an answer's image, or NULL if it has none.
    */
   public function getAnswerImageUrl(VotingAnswer $answer): ?string {
@@ -239,15 +256,8 @@ class VotingManagerService {
       static fn ($assignment) => $assignment->get('answer_id')->target_id,
       $assignments
     ));
-    $answer_storage = $this->entityTypeManager->getStorage('voting_answer');
-    $answers = $answer_ids ? $answer_storage->loadMultiple($answer_ids) : [];
-
-    $image_ids = array_filter(array_map(
-      static fn (VotingAnswer $answer) => $answer->get('image')->target_id,
-      $answers
-    ));
-    $file_storage = $this->entityTypeManager->getStorage('file');
-    $images = $image_ids ? $file_storage->loadMultiple($image_ids) : [];
+    $answers = $answer_ids ? $this->entityTypeManager->getStorage('voting_answer')->loadMultiple($answer_ids) : [];
+    $images = $this->loadAnswerImages($answers);
 
     $data = [];
     foreach ($assignments as $assignment) {
@@ -257,18 +267,81 @@ class VotingManagerService {
         continue;
       }
 
-      $image_id = $answer->get('image')->target_id;
-      $image = $image_id ? ($images[$image_id] ?? NULL) : NULL;
-
-      $data[] = [
-        'id' => $answer->id(),
-        'title' => $answer->label(),
-        'votes' => (int) $assignment->get('vote_count')->value,
-        'img_url' => $image instanceof FileInterface ? $this->fileUrlGenerator->generateAbsoluteString($image->getFileUri()) : NULL,
-      ];
+      $data[] = $this->buildAnswerData(
+        $answer,
+        $this->resolveAnswerImage($answer, $images),
+        (int) $assignment->get('vote_count')->value
+      );
     }
 
     return $data;
+  }
+
+  /**
+   * Batch-loads the image file entities for a set of answers.
+   *
+   * @param \Drupal\voting_system\Entity\VotingAnswer[] $answers
+   *
+   * @return \Drupal\file\FileInterface[]
+   *   File entities keyed by file ID.
+   */
+  private function loadAnswerImages(array $answers): array {
+    $image_ids = array_filter(array_map(
+      static fn (VotingAnswer $answer) => $answer->get('image')->target_id,
+      $answers
+    ));
+
+    return $image_ids ? $this->entityTypeManager->getStorage('file')->loadMultiple($image_ids) : [];
+  }
+
+  /**
+   * @param \Drupal\file\FileInterface[] $images
+   *   File entities keyed by file ID, as returned by loadAnswerImages().
+   */
+  private function resolveAnswerImage(VotingAnswer $answer, array $images): ?FileInterface {
+    $image_id = $answer->get('image')->target_id;
+    return $image_id ? ($images[$image_id] ?? NULL) : NULL;
+  }
+
+  /**
+   * Builds the plain array representation of an answer for JSON output.
+   *
+   * $votes is omitted entirely when NULL, since a standalone answer isn't
+   * tied to any particular question/assignment and so has no vote count of
+   * its own.
+   */
+  private function buildAnswerData(VotingAnswer $answer, ?FileInterface $image, ?int $votes = NULL): array {
+    $data = [
+      'id' => $answer->id(),
+      'title' => $answer->label(),
+    ];
+
+    if ($votes !== NULL) {
+      $data['votes'] = $votes;
+    }
+
+    $data['description'] = $this->sanitizeDescription($answer->get('description')->value);
+    $data['img_url'] = $image instanceof FileInterface ? $this->fileUrlGenerator->generateAbsoluteString($image->getFileUri()) : NULL;
+
+    return $data;
+  }
+
+  /**
+   * Sanitizes a WYSIWYG answer description for safe API output.
+   *
+   * Descriptions come from a CKEditor-backed field but are read here as a
+   * plain string with no filter format enforced (the API has no concept of
+   * text formats), so this is the sanitization boundary: it keeps common
+   * formatting tags (bold, links, lists, headings, images, tables, etc.)
+   * while stripping <script>, event handler attributes, javascript: URIs
+   * and anything else Xss::filterAdmin() doesn't allow.
+   */
+  private function sanitizeDescription(?string $description): ?string {
+    if ($description === NULL || $description === '') {
+      return NULL;
+    }
+
+    return Xss::filterAdmin($description);
   }
 
 }

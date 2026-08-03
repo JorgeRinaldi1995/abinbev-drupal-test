@@ -201,6 +201,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/voting/answers:
+    get:
+      operationId: listAnswers
+      tags: [Questions]
+      summary: Listar todas as respostas (admin)
+      description: >
+        Requer token de administrador. Retorna todas as respostas
+        cadastradas, independentemente de estarem vinculadas a alguma
+        pergunta. Como não está associada a um `voting_answer_assignment`
+        específico, não inclui contagem de votos (isso só existe no
+        contexto de uma pergunta).
+      responses:
+        '200':
+          description: Lista de respostas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AnswerListItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /api/voting/answer:
     post:
       operationId: createAnswer
@@ -462,14 +487,42 @@ components:
         title:
           type: string
           example: Lager
+        votes:
+          type: integer
+          example: 12
+        description:
+          type: string
+          nullable: true
+          description: >
+            HTML rico (CKEditor), sanitizado no servidor com Xss::filterAdmin()
+            antes de ser devolvido — tags de formatação são preservadas,
+            scripts e atributos de evento são removidos.
+          example: "<p>Cerveja <strong>leve</strong> e refrescante.</p>"
         img_url:
           type: string
           format: uri
           nullable: true
           example: https://example.com/sites/default/files/voting_system_answers/580ba8970c7dc8db.png
-        votes:
+
+    AnswerListItem:
+      type: object
+      description: Igual a Answer, mas sem `votes` — não há um assignment/pergunta de referência.
+      properties:
+        id:
           type: integer
-          example: 12
+          example: 3
+        title:
+          type: string
+          example: Lager
+        description:
+          type: string
+          nullable: true
+          example: "<p>Cerveja <strong>leve</strong> e refrescante.</p>"
+        img_url:
+          type: string
+          format: uri
+          nullable: true
+          example: https://example.com/sites/default/files/voting_system_answers/580ba8970c7dc8db.png
 
     Question:
       type: object
