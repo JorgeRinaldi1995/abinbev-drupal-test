@@ -87,6 +87,11 @@ Authentication via bearer token (`POST /oauth/token` with Drupal username/passwo
 - An answer can only be edited via the API if it is not linked to any question—since answers are reusable across questions, editing one that is already linked would retroactively alter what has already been displayed or voted on (`AnswerLinkedToQuestionException`).
 - Answer image upload via URL: validates the URL format, content type (png/jpg/webp/gif), and size (5MB limit) before downloading and storing it as a managed Drupal file.
 
+### Security hardening
+
+- Output sanitization in `VoteBlock`: answer titles are fully HTML-escaped (`Html::escape()`) and descriptions go through the same `Xss::filterAdmin()` allowlist used by the API, so a malicious answer title/description entered by a compromised admin account can no longer execute as HTML/JS in another voter's browser.
+- SSRF hardening in `AnswerImageDownloaderService`: only `http`/`https` URLs are accepted, the resolved IP(s) of the host are checked against private/loopback/link-local/reserved ranges before any request is made, and redirects are followed manually (instead of automatically) with the same check re-applied to every hop — closing both direct SSRF attempts (e.g. `http://169.254.169.254/...`, `http://127.0.0.1/...`) and redirect-based bypasses.
+
 ### Architecture and code quality
 
 - Thin controllers: they only parse the request and delegate to services; domain exceptions are centrally mapped to the correct HTTP status (`ApiControllerBase`).
@@ -94,6 +99,13 @@ Authentication via bearer token (`POST /oauth/token` with Drupal username/passwo
 - Drupal API caching correctly applied to the voting block (`user` context + cache tags on the involved entities), fixing a bug where one user's result leaked to others.
 - Listing queries load answers and images in batches (`loadMultiple`), avoiding N+1 issues.
 - Kernel tests for vote duplication and `question_id` uniqueness.
+
+### Data integrity and performance at scale
+
+- Database-level unique indexes (`voting_system.install`, `hook_update_N`): `voting_question.question_id` and `vote_record` (`user_id`, `assignment_id`) are now enforced by the database itself, not only by the entity constraint / service-level lookup — those only protect against sequential duplicates, not two concurrent requests racing past the same check before either write commits.
+- `VoteService::recordVote()` wraps the vote insert and the `vote_count` increment in a single database transaction, and the increment itself is an atomic `UPDATE ... SET vote_count = vote_count + 1` via the Database API instead of a read-then-write through the entity API (which would lose votes under concurrent writes to the same answer). A duplicate vote that still races past the in-app check is caught as a database `IntegrityConstraintViolationException` and mapped to the same `DuplicateVoteException` used for the normal case.
+- Added an index on `voting_question.status`, used by the `GET /api/voting/questions` read path (`loadByProperties(['status' => 1])`).
+- Removed a stale, non-functional `hook_schema()` implementation that had been placed under `config/install/` (Drupal never discovers `.install` files outside the module root, so it silently never ran).
 
 ## Next steps (roadmap)
 
@@ -107,8 +119,6 @@ Authentication via bearer token (`POST /oauth/token` with Drupal username/passwo
 ### Security
 
 - Flood control / rate limiting on `POST /oauth/token` — currently, there is no protection against username/password brute-force attacks, unlike Drupal's native login form.
-- Output sanitization in `VoteBlock`: the answer title/description are concatenated into HTML markup without escaping (`Html::escape()`/`Xss::filter()`) before being passed to `Markup::create()` — a malicious answer title entered by a compromised admin would execute as HTML/JS in the voter's browser.
-- `AnswerImageDownloaderService` accepts any URL provided by an admin for server-side download — it is worth considering an allowlist of hosts or blocking internal/private IPs to reduce the SSRF attack surface.
 - Review token expiration/rotation (currently fixed at 1 hour, with no refresh token) and consider moving to a more standardized scheme (signed JWT or full OAuth2).
 
 ---

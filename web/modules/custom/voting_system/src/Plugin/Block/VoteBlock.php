@@ -2,6 +2,8 @@
 
 namespace Drupal\voting_system\Plugin\Block;
 
+use Drupal\Component\Utility\Html;
+use Drupal\Component\Utility\Xss;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Form\FormStateInterface;
@@ -258,13 +260,21 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
       $title = $answer->get('title')->value;
       $description = $answer->get('description')->value;
 
+      // $title is plain text and must be fully escaped. $description comes
+      // from a WYSIWYG field and is expected to carry safe formatting, so it
+      // goes through the same Xss::filterAdmin() allowlist used for the API
+      // output (see VotingManagerService::sanitizeDescription()) instead of
+      // a full escape — this still strips <script>, event handlers, and
+      // javascript: URIs, which is what protects other voters from a
+      // malicious answer title/description if an admin account is ever
+      // compromised.
       $markup = '<div class="vote-option">';
       if ($image_url) {
-        $markup .= '<div><img src="' . $image_url . '" style="max-width:100px;margin-bottom:8px;" /></div>';
+        $markup .= '<div><img src="' . Html::escape($image_url) . '" style="max-width:100px;margin-bottom:8px;" /></div>';
       }
-      $markup .= '<div><strong>' . $title . '</strong></div>';
+      $markup .= '<div><strong>' . Html::escape($title) . '</strong></div>';
       if (!empty($description)) {
-        $markup .= '<div>' . $description . '</div>';
+        $markup .= '<div>' . Xss::filterAdmin($description) . '</div>';
       }
       $markup .= '</div>';
 
