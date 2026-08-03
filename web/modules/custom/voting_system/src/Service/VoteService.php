@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\voting_system\Service;
 
+use Drupal\Core\Database\Connection;
+use Drupal\Core\Database\IntegrityConstraintViolationException;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\voting_system\Entity\VotingAnswer;
 use Drupal\voting_system\Entity\VotingAnswerAssignment;
@@ -21,6 +23,7 @@ class VoteService {
   public function __construct(
     protected readonly EntityTypeManagerInterface $entityTypeManager,
     protected readonly QuestionResolverService $questionResolver,
+    protected readonly Connection $database,
   ) {}
 
   /**
@@ -87,9 +90,21 @@ class VoteService {
     return $assignments ? reset($assignments) : NULL;
   }
 
+  /**
+   * @throws \Drupal\voting_system\Exception\DuplicateVoteException
+   */
   private function recordVote(VotingAnswerAssignment $assignment, int $uid): void {
+    $assignment_id = (int) $assignment->id();
+
+    // Fast-path check: gives a clean error for the common (non-racing)
+    // case without touching the database. It is NOT what actually prevents
+    // a duplicate vote under concurrency — two simultaneous requests from
+    // the same user could both pass this before either INSERT commits. The
+    // real guarantee is the unique index on vote_record(user_id,
+    // assignment_id) (see voting_system_update_10002()); a racing duplicate
+    // is rejected by the database and caught below.
     $existing_vote = $this->entityTypeManager->getStorage('vote_record')->loadByProperties([
-      'assignment_id' => $assignment->id(),
+      'assignment_id' => $assignment_id,
       'user_id' => $uid,
     ]);
 
@@ -97,15 +112,38 @@ class VoteService {
       throw new DuplicateVoteException('You have already voted on this question.');
     }
 
-    $vote = $this->entityTypeManager->getStorage('vote_record')->create([
-      'assignment_id' => $assignment->id(),
-      'user_id' => $uid,
-      'created' => time(),
-    ]);
-    $vote->save();
+    // The vote record and the vote_count it feeds into must land together:
+    // if the counter update failed after the vote was recorded (or vice
+    // versa), the tally would silently drift from the actual vote rows.
+    $transaction = $this->database->startTransaction();
 
-    $assignment->set('vote_count', $assignment->get('vote_count')->value + 1);
-    $assignment->save();
+    try {
+      $vote = $this->entityTypeManager->getStorage('vote_record')->create([
+        'assignment_id' => $assignment_id,
+        'user_id' => $uid,
+        'created' => time(),
+      ]);
+      $vote->save();
+
+      // Atomic increment (vote_count = vote_count + 1) instead of reading
+      // the current value and saving it back through the entity API: a
+      // read-then-write is not safe under concurrent votes for the same
+      // answer, since two requests can read the same value and both write
+      // back current+1, losing one of the votes from the tally.
+      $this->database->update('voting_answer_assignment')
+        ->expression('vote_count', 'vote_count + 1')
+        ->condition('id', $assignment_id)
+        ->execute();
+    }
+    catch (\Exception $exception) {
+      $transaction->rollBack();
+
+      if ($exception instanceof IntegrityConstraintViolationException) {
+        throw new DuplicateVoteException('You have already voted on this question.');
+      }
+
+      throw $exception;
+    }
   }
 
 }

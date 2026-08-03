@@ -21,7 +21,7 @@ services:
 
   voting_system.vote_service:
     class: Drupal\voting_system\Service\VoteService
-    arguments: ['@entity_type.manager', '@voting_system.question_resolver']
+    arguments: ['@entity_type.manager', '@voting_system.question_resolver', '@database']
 
   voting_system.vote_results_service:
     class: Drupal\voting_system\Service\VoteResultsService

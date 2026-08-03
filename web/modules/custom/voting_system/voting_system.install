@@ -1,0 +1,74 @@
+<?php
+
+/**
+ * @file
+ * Update hooks that add database-level integrity/performance constraints
+ * which the content entity API doesn't let base fields declare directly.
+ *
+ * There used to be a hook_schema() implementation attempting to declare
+ * these same unique keys/indexes, but it lived at config/install/voting_system.install
+ * instead of the module root, so Drupal never discovered it (confirmed via
+ * the system.schema key-value record still being at the pre-update default,
+ * 8000) — the tables it described were never actually created that way,
+ * since these are content entity base tables managed by the entity system,
+ * not hook_schema() tables. It has been removed; the constraints it was
+ * meant to add are applied for real below, using Schema API calls against
+ * the live database.
+ */
+
+/**
+ * Adds a unique index on voting_question.question_id.
+ *
+ * Uniqueness was previously only enforced by the UniqueQuestionIdentifier
+ * validation constraint and a service-level lookup in
+ * VotingManagerService::createQuestion()/updateQuestion() — neither of
+ * which prevents two concurrent requests from both passing the check before
+ * either INSERT commits. A real unique index makes the database itself the
+ * final authority.
+ */
+function voting_system_update_10001() {
+  $schema = \Drupal::database()->schema();
+  if ($schema->tableExists('voting_question') && !$schema->indexExists('voting_question', 'question_id')) {
+    $schema->addUniqueKey('voting_question', 'question_id', ['question_id']);
+  }
+}
+
+/**
+ * Adds a unique index on vote_record (user_id, assignment_id).
+ *
+ * This is the database-level guarantee behind "one vote per user per
+ * question": VoteService::recordVote() checks for an existing vote before
+ * inserting, but that check alone has the same race as above under
+ * concurrent requests. With this index in place, a racing duplicate INSERT
+ * is rejected by the database (surfaced as
+ * \Drupal\Core\Database\IntegrityConstraintViolationException, caught in
+ * VoteService and converted to DuplicateVoteException).
+ */
+function voting_system_update_10002() {
+  $schema = \Drupal::database()->schema();
+  if ($schema->tableExists('vote_record') && !$schema->indexExists('vote_record', 'user_vote')) {
+    $schema->addUniqueKey('vote_record', 'user_vote', ['user_id', 'assignment_id']);
+  }
+}
+
+/**
+ * Adds an index on voting_question.status.
+ *
+ * Used by VotingManagerService::loadActiveQuestions() (loadByProperties(['status' => 1])),
+ * the read path behind GET /api/voting/questions.
+ */
+function voting_system_update_10003() {
+  $schema = \Drupal::database()->schema();
+  if ($schema->tableExists('voting_question') && !$schema->indexExists('voting_question', 'status')) {
+    $spec = [
+      'fields' => [
+        'status' => [
+          'type' => 'int',
+          'size' => 'tiny',
+          'not null' => FALSE,
+        ],
+      ],
+    ];
+    $schema->addIndex('voting_question', 'status', ['status'], $spec);
+  }
+}
