@@ -17,7 +17,11 @@ services:
 
   voting_system.voting_manager:
     class: Drupal\voting_system\Service\VotingManagerService
-    arguments: ['@entity_type.manager', '@voting_system.question_resolver', '@voting_system.answer_image_downloader', '@file_url_generator']
+    arguments: ['@entity_type.manager', '@voting_system.question_resolver', '@voting_system.answer_image_downloader']
+
+  voting_system.voting_query:
+    class: Drupal\voting_system\Service\VotingQueryService
+    arguments: ['@entity_type.manager', '@voting_system.question_resolver', '@file_url_generator', '@cache.default']
 
   voting_system.vote_service:
     class: Drupal\voting_system\Service\VoteService
@@ -51,6 +55,7 @@ services:
   Drupal\voting_system\Service\TokenAuthService: '@voting_system.token_auth_service'
   Drupal\voting_system\Service\QuestionResolverService: '@voting_system.question_resolver'
   Drupal\voting_system\Service\VotingManagerService: '@voting_system.voting_manager'
+  Drupal\voting_system\Service\VotingQueryService: '@voting_system.voting_query'
   Drupal\voting_system\Service\VoteService: '@voting_system.vote_service'
   Drupal\voting_system\Service\VoteResultsService: '@voting_system.vote_results_service'
   Drupal\voting_system\Service\AnswerImageDownloaderService: '@voting_system.answer_image_downloader'

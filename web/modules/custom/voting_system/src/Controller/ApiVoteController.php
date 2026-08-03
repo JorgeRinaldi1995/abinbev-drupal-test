@@ -37,6 +37,9 @@ class ApiVoteController extends ApiControllerBase {
     );
   }
 
+  /**
+   * POST /api/vote/{question_id} — casts a vote for an answer.
+   */
   public function submitVote(Request $request, string $question_id): JsonResponse {
     if (!$this->currentUser()->isAuthenticated()) {
       return $this->jsonError('Unauthorized', 401);
@@ -59,6 +62,10 @@ class ApiVoteController extends ApiControllerBase {
     return new JsonResponse(['success' => TRUE, 'message' => 'Vote recorded.']);
   }
 
+  /**
+   * GET /api/vote-results/{question_id} — results for a question, gated on
+   * the caller having already voted.
+   */
   public function getResults(string $question_id): JsonResponse {
     if (!$this->currentUser()->isAuthenticated()) {
       return $this->jsonError('Unauthorized', 401);

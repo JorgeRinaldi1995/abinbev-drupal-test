@@ -27,6 +27,9 @@ abstract class ApiControllerBase extends ControllerBase {
 
   use JsonRequestTrait;
 
+  /**
+   * Builds a `{success: false, error: message}` JSON response.
+   */
   protected function jsonError(string $message, int $status): JsonResponse {
     return new JsonResponse(['success' => FALSE, 'error' => $message], $status);
   }

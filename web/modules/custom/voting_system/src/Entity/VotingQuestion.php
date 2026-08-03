@@ -47,7 +47,9 @@ class VotingQuestion extends ContentEntityBase implements EntityOwnerInterface {
   use EntityChangedTrait;
 
   /**
-   * Default callback for user_id field.
+   * Default value callback for the `user_id` field.
+   *
+   * @return int[]
    */
   public static function getCurrentUserId(): array {
     return [\Drupal::currentUser()->id()];

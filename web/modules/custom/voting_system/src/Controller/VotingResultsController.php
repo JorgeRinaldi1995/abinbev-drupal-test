@@ -9,6 +9,9 @@ use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\voting_system\Service\VoteResultsService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
+/**
+ * Renders the admin-only results page (/admin/voting-results).
+ */
 class VotingResultsController extends ControllerBase implements ContainerInjectionInterface {
 
   public function __construct(
@@ -21,6 +24,11 @@ class VotingResultsController extends ControllerBase implements ContainerInjecti
     );
   }
 
+  /**
+   * Builds one results table per question, with counts and percentages.
+   *
+   * @return array<string, mixed>
+   */
   public function resultsPage(): array {
     $questions = $this->entityTypeManager()
       ->getStorage('voting_question')

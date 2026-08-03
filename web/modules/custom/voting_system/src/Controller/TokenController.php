@@ -11,6 +11,9 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 
+/**
+ * Issues bearer tokens for username/password credentials.
+ */
 class TokenController extends ControllerBase {
 
   public function __construct(
@@ -25,6 +28,10 @@ class TokenController extends ControllerBase {
     );
   }
 
+  /**
+   * POST /oauth/token — expects `application/x-www-form-urlencoded`
+   * `username`/`password`, not JSON.
+   */
   public function getToken(Request $request): JsonResponse {
     $username = (string) $request->get('username');
     $password = (string) $request->get('password');

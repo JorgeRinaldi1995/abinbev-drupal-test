@@ -10,6 +10,7 @@ use Drupal\voting_system\Exception\DuplicateQuestionIdentifierException;
 use Drupal\voting_system\Exception\InvalidAnswerImageException;
 use Drupal\voting_system\Exception\QuestionNotFoundException;
 use Drupal\voting_system\Service\VotingManagerService;
+use Drupal\voting_system\Service\VotingQueryService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,31 +22,45 @@ class ApiManageVotingController extends ApiControllerBase {
 
   public function __construct(
     protected readonly VotingManagerService $votingManager,
+    protected readonly VotingQueryService $votingQuery,
   ) {}
 
   public static function create(ContainerInterface $container): static {
     return new static(
-      $container->get('voting_system.voting_manager')
+      $container->get('voting_system.voting_manager'),
+      $container->get('voting_system.voting_query'),
     );
   }
 
+  /**
+   * GET /api/voting/questions — active questions with their answers.
+   */
   public function listActiveQuestions(): JsonResponse {
-    return new JsonResponse($this->votingManager->getActiveQuestionsData());
+    return new JsonResponse($this->votingQuery->getActiveQuestionsData());
   }
 
+  /**
+   * GET /api/voting/answers — all answers, admin-only.
+   */
   public function listAnswers(): JsonResponse {
-    return new JsonResponse($this->votingManager->getAnswersData());
+    return new JsonResponse($this->votingQuery->getAnswersData());
   }
 
+  /**
+   * GET /api/voting/question/{question_id} — one active question.
+   */
   public function getQuestion(string $question_id): JsonResponse {
     try {
-      return new JsonResponse($this->votingManager->getQuestionData($question_id));
+      return new JsonResponse($this->votingQuery->getQuestionData($question_id));
     }
     catch (QuestionNotFoundException $exception) {
       return $this->errorResponse($exception);
     }
   }
 
+  /**
+   * POST /api/voting/question — creates a question, admin-only.
+   */
   public function createQuestion(Request $request): JsonResponse {
     $data = $this->getJsonData($request);
     $title = $data['title'] ?? NULL;
@@ -70,6 +85,9 @@ class ApiManageVotingController extends ApiControllerBase {
     ]);
   }
 
+  /**
+   * PATCH /api/voting/question/{question_id} — partial update, admin-only.
+   */
   public function updateQuestion(Request $request, string $question_id): JsonResponse {
     $data = $this->getJsonData($request);
 
@@ -97,6 +115,9 @@ class ApiManageVotingController extends ApiControllerBase {
     ]);
   }
 
+  /**
+   * POST /api/voting/answer — creates an answer, admin-only.
+   */
   public function createAnswer(Request $request): JsonResponse {
     $data = $this->getJsonData($request);
     $title = $data['title'] ?? NULL;
@@ -122,6 +143,9 @@ class ApiManageVotingController extends ApiControllerBase {
     ]);
   }
 
+  /**
+   * PATCH /api/voting/answer/{answer_id} — partial update, admin-only.
+   */
   public function updateAnswer(Request $request, string $answer_id): JsonResponse {
     $data = $this->getJsonData($request);
 
@@ -145,7 +169,7 @@ class ApiManageVotingController extends ApiControllerBase {
       'success' => TRUE,
       'message' => 'Answer updated successfully',
       'id' => $answer->id(),
-      'img_url' => $this->votingManager->getAnswerImageUrl($answer),
+      'img_url' => $this->votingQuery->getAnswerImageUrl($answer),
     ]);
   }
 

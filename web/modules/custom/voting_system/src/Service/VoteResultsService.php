@@ -21,11 +21,11 @@ class VoteResultsService {
   ) {}
 
   /**
-   * Results as exposed to public API callers.
+   * Results as exposed to public API callers: gated on the caller having
+   * voted, and — unlike getResults() — replaced with a friendly message
+   * (no numbers at all) when the question's `show_percent` is off.
    *
-   * Unlike getResults(), this is gated on the caller having already voted
-   * on the question, and strips the per-answer percentage when the
-   * question's `show_percent` setting is off.
+   * @return array<string, mixed>
    *
    * @throws \Drupal\voting_system\Exception\QuestionNotFoundException
    * @throws \Drupal\voting_system\Exception\VoteRequiredException
@@ -37,18 +37,19 @@ class VoteResultsService {
       throw new VoteRequiredException('You must vote on this question before viewing its results.');
     }
 
-    $results = $this->getResults($question_identifier);
-    $show_percent = (bool) $question->get('show_percent')->value;
-
-    if (!$show_percent) {
-      foreach ($results['answers'] as &$answer) {
-        unset($answer['percent']);
-      }
+    if (!$question->get('show_percent')->value) {
+      return [
+        'show_percent' => FALSE,
+        'message' => 'Thank you for voting! Results for this question are not shown.',
+      ];
     }
 
-    return ['show_percent' => $show_percent] + $results;
+    return ['show_percent' => TRUE] + $this->getResults($question_identifier);
   }
 
+  /**
+   * Whether $uid has voted on any answer assigned to this question.
+   */
   private function hasUserVoted(int $question_entity_id, int $uid): bool {
     $assignments = $this->entityTypeManager->getStorage('voting_answer_assignment')->loadByProperties([
       'question_id' => $question_entity_id,
@@ -67,6 +68,12 @@ class VoteResultsService {
   }
 
   /**
+   * Unconditional vote tally for a question — no voter gate, no
+   * show_percent check. Used internally and by VoteBlock, which applies
+   * its own show_percent logic separately.
+   *
+   * @return array<string, mixed>
+   *
    * @throws \Drupal\voting_system\Exception\QuestionNotFoundException
    */
   public function getResults(int|string $question_identifier): array {

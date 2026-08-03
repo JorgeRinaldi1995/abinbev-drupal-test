@@ -95,10 +95,17 @@ Authentication via bearer token (`POST /oauth/token` with Drupal username/passwo
 ### Architecture and code quality
 
 - Thin controllers: they only parse the request and delegate to services; domain exceptions are centrally mapped to the correct HTTP status (`ApiControllerBase`).
-- Single-responsibility services: `QuestionResolverService` (resolves questions by numeric ID or `question_id`, avoiding duplication), `VoteService` (vote writing) separated from `VoteResultsService` (result reading).
+- Single-responsibility services: `QuestionResolverService` (resolves questions by numeric ID or `question_id`, avoiding duplication), plus a CQRS-lite split by domain — each write service owns a different aggregate and set of invariants than its read counterpart:
+
+  | Domain | Write | Read |
+  |---|---|---|
+  | Questions/Answers (admin CRUD) | `VotingManagerService` | `VotingQueryService` |
+  | Voting (user action) | `VoteService` | `VoteResultsService` |
+
 - Drupal API caching correctly applied to the voting block (`user` context + cache tags on the involved entities), fixing a bug where one user's result leaked to others.
 - Listing queries load answers and images in batches (`loadMultiple`), avoiding N+1 issues.
 - Kernel tests for vote duplication and `question_id` uniqueness.
+- `VotingQueryService` caches its three read methods (cache-aside over `\Drupal::cache()`, `Cache::PERMANENT` + tags, no TTL) so the API's JSON endpoints don't rebuild the same payload from scratch on every request. Tags follow Drupal's own `{entity_type}_list` / `{entity_type}:{id}` convention, so `VotingManagerService`'s writes invalidate the right cache entries automatically via the entity API — the only manual invalidation needed is in `VoteService`, whose vote-count increment writes through raw SQL for atomicity and therefore also has to reset that entity's persistent cache (`resetCache()`) and its list tag by hand.
 
 ### Data integrity and performance at scale
 
@@ -111,7 +118,6 @@ Authentication via bearer token (`POST /oauth/token` with Drupal username/passwo
 
 ### Caching, queues, and performance
 
-- Implement response caching at the API layer (currently, only the Drupal block is cached; JSON endpoints recalculate everything on every call).
 - Move the answer image download process (`AnswerImageDownloaderService`) to a queue (`hook_queue_info`/`QueueWorker`) instead of downloading synchronously during the creation request—currently, a slow or large image URL stalls the API response.
 - Review database indexes on high-volume tables (`vote_record`, `voting_answer_assignment`) as vote volume grows.
 - Implement pagination for `GET /api/voting/questions` (currently, it returns all active questions at once).

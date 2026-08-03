@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\voting_system\Service;
 
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -81,6 +82,9 @@ class VoteService {
     }
   }
 
+  /**
+   * Finds the assignment linking a question to a given answer, if any.
+   */
   private function findAssignment(int $question_entity_id, int $answer_id): ?VotingAnswerAssignment {
     $assignments = $this->entityTypeManager->getStorage('voting_answer_assignment')->loadByProperties([
       'question_id' => $question_entity_id,
@@ -96,13 +100,10 @@ class VoteService {
   private function recordVote(VotingAnswerAssignment $assignment, int $uid): void {
     $assignment_id = (int) $assignment->id();
 
-    // Fast-path check: gives a clean error for the common (non-racing)
-    // case without touching the database. It is NOT what actually prevents
-    // a duplicate vote under concurrency — two simultaneous requests from
-    // the same user could both pass this before either INSERT commits. The
-    // real guarantee is the unique index on vote_record(user_id,
-    // assignment_id) (see voting_system_update_10002()); a racing duplicate
-    // is rejected by the database and caught below.
+    // Fast-path only: doesn't prevent a duplicate under concurrency (two
+    // requests could both pass this before either INSERT commits). The real
+    // guarantee is the unique index from voting_system_update_10002(); a
+    // racing duplicate is caught as an exception below.
     $existing_vote = $this->entityTypeManager->getStorage('vote_record')->loadByProperties([
       'assignment_id' => $assignment_id,
       'user_id' => $uid,
@@ -112,9 +113,8 @@ class VoteService {
       throw new DuplicateVoteException('You have already voted on this question.');
     }
 
-    // The vote record and the vote_count it feeds into must land together:
-    // if the counter update failed after the vote was recorded (or vice
-    // versa), the tally would silently drift from the actual vote rows.
+    // Transaction: the vote row and the counter it feeds must land together,
+    // or a failure between them would silently drift the tally.
     $transaction = $this->database->startTransaction();
 
     try {
@@ -125,15 +125,20 @@ class VoteService {
       ]);
       $vote->save();
 
-      // Atomic increment (vote_count = vote_count + 1) instead of reading
-      // the current value and saving it back through the entity API: a
-      // read-then-write is not safe under concurrent votes for the same
-      // answer, since two requests can read the same value and both write
-      // back current+1, losing one of the votes from the tally.
+      // Atomic increment, not read-then-write: two concurrent votes on the
+      // same answer could otherwise both read the same value and overwrite
+      // each other's increment.
       $this->database->update('voting_answer_assignment')
         ->expression('vote_count', 'vote_count + 1')
         ->condition('id', $assignment_id)
         ->execute();
+
+      // The raw update above bypasses the entity API, so its usual
+      // bookkeeping doesn't happen: reset the entity cache (else a stale
+      // vote_count keeps being served) and the list tag VotingQueryService
+      // caches against (else its cached payloads go stale too).
+      $this->entityTypeManager->getStorage('voting_answer_assignment')->resetCache([$assignment_id]);
+      Cache::invalidateTags(['voting_answer_assignment_list']);
     }
     catch (\Exception $exception) {
       $transaction->rollBack();

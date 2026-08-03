@@ -5,7 +5,6 @@ namespace Drupal\voting_system\Form;
 use Drupal\Core\Entity\ContentEntityForm;
 use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Render\Element;
 
 /**
  * Custom form for creating/editing voting questions with reusable answers.
@@ -13,6 +12,8 @@ use Drupal\Core\Render\Element;
 class VotingQuestionForm extends ContentEntityForm {
 
   /**
+   * Adds the "add another answer" repeater on top of the default entity form.
+   *
    * {@inheritdoc}
    */
   public function form(array $form, FormStateInterface $form_state) {
@@ -111,6 +112,11 @@ class VotingQuestionForm extends ContentEntityForm {
   }
 
   /**
+   * Rejects duplicate answer selections. Duplicate question_id values are
+   * already caught by the UniqueQuestionIdentifier constraint on the field
+   * (see VotingQuestion::baseFieldDefinitions()), enforced automatically by
+   * parent::validateForm() via $entity->validate().
+   *
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
@@ -132,57 +138,17 @@ class VotingQuestionForm extends ContentEntityForm {
 
       $selected_ids[] = $answer_id;
     }
-
-    $question_id_value = $form_state->getValue('question_id');
-    if (is_array($question_id_value)) {
-      if (isset($question_id_value['value']) && is_scalar($question_id_value['value'])) {
-        $question_id_value = $question_id_value['value'];
-      }
-      elseif (isset($question_id_value[0]) && is_scalar($question_id_value[0])) {
-        $question_id_value = $question_id_value[0];
-      }
-      else {
-        return;
-      }
-    }
-
-    if (!is_scalar($question_id_value)) {
-      return;
-    }
-
-    $question_id = trim((string) $question_id_value);
-    if ($question_id === '') {
-      return;
-    }
-
-    $query = \Drupal::entityQuery('voting_question')
-      ->accessCheck(FALSE)
-      ->condition('question_id', $question_id);
-
-    if (!$this->entity->isNew()) {
-      $query->condition('id', $this->entity->id(), '<>');
-    }
-
-    $ids = $query->execute();
-
-    if (!empty($ids)) {
-      $form_state->setErrorByName(
-        'question_id',
-        $this->t('The question identifier is already in use. Please choose another one.')
-      );
-    }
   }
 
   /**
-   * {@inheritdoc}
+   * Saves the question, then links the selected answers.
    *
-   * Entity forms save in a *separate* submit handler (::save) that runs
-   * after ::submitForm in the button's #submit chain — parent::submitForm()
-   * only rebuilds $this->entity from the form values, it does not persist
-   * it. For a brand new question, $entity->id() is therefore still NULL at
-   * the end of ::submitForm(); linking answers had to wait until here,
-   * where the entity is guaranteed to already be saved (for both create
-   * and edit).
+   * Answer linking must happen here rather than in submitForm(): entity
+   * forms save in a separate ::save handler that runs afterward in the
+   * button's #submit chain, so a new question's ID doesn't exist yet by the
+   * end of submitForm().
+   *
+   * {@inheritdoc}
    */
   public function save(array $form, FormStateInterface $form_state) {
     try {
@@ -233,7 +199,7 @@ class VotingQuestionForm extends ContentEntityForm {
   }
 
   /**
-   * Load existing assignments for the given question.
+   * @return \Drupal\voting_system\Entity\VotingAnswerAssignment[]
    */
   protected function loadExistingAssignments(int $question_id): array {
     return \Drupal::entityTypeManager()
@@ -242,7 +208,10 @@ class VotingQuestionForm extends ContentEntityForm {
   }
 
   /**
-   * Build the options list for the repeater rows.
+   * Builds the options list for the repeater rows, excluding answers already
+   * picked in another row.
+   *
+   * @return array<int|string, string>
    */
   protected function buildAnswerOptions(array $excluded_ids = []): array {
     $answers = \Drupal::entityTypeManager()->getStorage('voting_answer')->loadMultiple();

@@ -86,14 +86,9 @@ class AnswerImageDownloaderService {
   }
 
   /**
-   * Fetches $image_url, following redirects manually.
-   *
-   * Guzzle's automatic redirect following is deliberately disabled: a URL
-   * can pass the SSRF allowlist check on its original host and still
-   * redirect (or, via DNS rebinding, resolve on a later request) to an
-   * internal address. Validating every hop before it's requested closes
-   * that gap. A capped hop count also prevents a malicious server from
-   * causing an unbounded redirect chain.
+   * Fetches $image_url, following redirects manually (each hop re-validated
+   * by assertUrlIsSafe()) instead of letting Guzzle auto-follow them a
+   * safe URL can still redirect to an internal address.
    *
    * @throws \Drupal\voting_system\Exception\InvalidAnswerImageException
    */
@@ -130,10 +125,8 @@ class AnswerImageDownloaderService {
   }
 
   /**
-   * Rejects URLs that aren't plain http(s) or that resolve to a
-   * private/loopback/link-local address, to reduce the SSRF surface an
-   * admin-supplied URL exposes (e.g. fetching http://169.254.169.254/... or
-   * an internal service on http://127.0.0.1:6379).
+   * Rejects non-http(s) URLs and URLs resolving to a private/internal IP,
+   * to guard against SSRF via an admin-supplied image URL.
    *
    * @throws \Drupal\voting_system\Exception\InvalidAnswerImageException
    */
@@ -162,11 +155,11 @@ class AnswerImageDownloaderService {
   }
 
   /**
+   * Resolves a host to all its IPv4/IPv6 addresses (or itself, if already
+   * an IP). Every address must be checked, since only one of several A/AAAA
+   * records needs to be internal for an SSRF bypass.
+   *
    * @return string[]
-   *   All IPv4/IPv6 addresses the host resolves to (or the host itself, if
-   *   it's already an IP literal). Every address is checked, since a
-   *   hostname can have multiple A/AAAA records and only one of them
-   *   needing to be internal is enough for an SSRF bypass.
    */
   private function resolveHostIps(string $host): array {
     if (filter_var($host, FILTER_VALIDATE_IP)) {
@@ -186,6 +179,11 @@ class AnswerImageDownloaderService {
     return array_values(array_filter($ips));
   }
 
+  /**
+   * Maps a Content-Type header (or, as fallback, the URL's path extension)
+   * to a supported file extension, or NULL if neither is a supported image
+   * type.
+   */
   private function resolveExtension(string $content_type_header, string $image_url): ?string {
     $content_type = strtolower(trim(explode(';', $content_type_header)[0]));
     if (isset(self::EXTENSION_BY_MIME_TYPE[$content_type])) {

@@ -14,18 +14,23 @@ use Symfony\Component\Routing\Route;
 /**
  * Checks access to the voting system's bearer-token protected API routes.
  *
- * Routes opt in with a `_voting_system_api_access` requirement set to
- * either 'user' (any authenticated token) or 'admin' (token belonging to
- * an administrator). Resolving the bearer token into an account is
- * TokenAuthenticationProvider's job, which runs earlier in the request
- * lifecycle; by the time this check runs, $account already IS that user.
+ * Routes opt in via a `_voting_system_api_access` requirement: 'user' (any
+ * authenticated token) or 'admin' (administrator role). By the time this
+ * runs, $account is already the token's owner — TokenAuthenticationProvider
+ * resolved that earlier in the request lifecycle.
  */
 class VotingApiAccessCheck implements AccessCheckInterface, AccessInterface {
 
+  /**
+   * {@inheritdoc}
+   */
   public function applies(Route $route): bool {
     return $route->hasRequirement('_voting_system_api_access');
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function access(Route $route, RouteMatchInterface $route_match, AccountInterface $account): AccessResult {
     if (!$account->isAuthenticated()) {
       return AccessResult::forbidden();

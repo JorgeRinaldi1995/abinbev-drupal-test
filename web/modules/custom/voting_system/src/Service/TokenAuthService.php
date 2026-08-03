@@ -5,6 +5,9 @@ namespace Drupal\voting_system\Service;
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\user\Entity\User;
 
+/**
+ * Resolves the Drupal user from a request's bearer token.
+ */
 class TokenAuthService {
 
   protected TokenService $tokenService;
@@ -13,6 +16,9 @@ class TokenAuthService {
     $this->tokenService = $tokenService;
   }
 
+  /**
+   * Returns the token's owner, or NULL if the header is missing or invalid.
+   */
   public function getUserFromToken(Request $request): ?User {
     $auth_header = $request->headers->get('Authorization');
     if (!$auth_header || !str_starts_with($auth_header, 'Bearer ')) {

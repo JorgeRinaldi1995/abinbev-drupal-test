@@ -6,12 +6,18 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 
+/**
+ * Validator for the UniqueQuestionIdentifier constraint.
+ */
 class UniqueQuestionIdentifierConstraintValidator extends ConstraintValidator {
 
   public function __construct(
     protected EntityTypeManagerInterface $entityTypeManager
   ) {}
 
+  /**
+   * {@inheritdoc}
+   */
   public function validate($value, Constraint $constraint): void {
 
     $field_item_list = $this->context->getObject();
@@ -20,7 +26,6 @@ class UniqueQuestionIdentifierConstraintValidator extends ConstraintValidator {
       return;
     }
 
-    // Pega o valor real do campo string.
     $value = $field_item_list->value;
 
     if (!$value) {
@@ -35,7 +40,7 @@ class UniqueQuestionIdentifierConstraintValidator extends ConstraintValidator {
       ->condition('question_id', $value)
       ->accessCheck(FALSE);
 
-    // Ignora a própria entidade na edição.
+    // Exclude the entity being edited, so it doesn't collide with itself.
     if (!$entity->isNew()) {
       $query->condition('id', $entity->id(), '<>');
     }

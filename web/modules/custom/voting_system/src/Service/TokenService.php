@@ -16,13 +16,7 @@ class TokenService {
   }
 
   /**
-   * Generates a secure bearer token for the given user ID.
-   *
-   * @param int $uid
-   *   The user ID.
-   *
-   * @return string
-   *   The generated token.
+   * Generates a secure bearer token for a user, valid for 1 hour.
    */
   public function generateToken(int $uid): string {
     $token = bin2hex(random_bytes(32));
@@ -37,13 +31,7 @@ class TokenService {
   }
 
   /**
-   * Validates a bearer token.
-   *
-   * @param string $token
-   *   The token string.
-   *
-   * @return int|null
-   *   Returns the user ID if valid, or NULL if invalid/expired.
+   * Returns the owning user ID if the token is valid and unexpired, else NULL.
    */
   public function validateToken(string $token): ?int {
     $store = $this->keyValueFactory->get('oauth_tokens');

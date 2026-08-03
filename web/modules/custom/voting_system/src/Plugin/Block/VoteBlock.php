@@ -140,6 +140,9 @@ class VoteBlock extends BlockBase implements ContainerFactoryPluginInterface {
   }
 
   /**
+   * Renders the ballot, the results table, or a plain status message,
+   * depending on whether the question is active and the viewer has voted.
+   *
    * {@inheritdoc}
    */
   public function build(): array {

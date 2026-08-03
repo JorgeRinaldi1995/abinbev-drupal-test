@@ -12,12 +12,10 @@ use Symfony\Component\HttpFoundation\Request;
 /**
  * Authenticates API requests carrying a `voting_system` bearer token.
  *
- * Without a real authentication provider, Drupal's ambient current user
- * (\Drupal::currentUser(), the current_user service, ControllerBase's
- * currentUser()) stays anonymous for the whole request, because nothing
- * tells Drupal who the bearer token belongs to — VotingApiAccessCheck only
- * decided whether the request could proceed, it never authenticated it.
- * That's why question/answer authorship was silently saved as anonymous.
+ * A real authentication provider is required so Drupal's current user
+ * (\Drupal::currentUser(), ControllerBase::currentUser()) reflects the
+ * token's owner for the whole request — an access check alone (like
+ * VotingApiAccessCheck) only gates the request, it never authenticates it.
  */
 class TokenAuthenticationProvider implements AuthenticationProviderInterface {
 
@@ -25,10 +23,16 @@ class TokenAuthenticationProvider implements AuthenticationProviderInterface {
     protected readonly TokenAuthService $tokenAuthService,
   ) {}
 
+  /**
+   * {@inheritdoc}
+   */
   public function applies(Request $request): bool {
     return str_starts_with((string) $request->headers->get('Authorization'), 'Bearer ');
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function authenticate(Request $request): ?AccountInterface {
     return $this->tokenAuthService->getUserFromToken($request);
   }

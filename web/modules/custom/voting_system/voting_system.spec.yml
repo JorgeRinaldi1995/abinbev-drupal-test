@@ -400,9 +400,10 @@ paths:
       tags: [Voting]
       summary: Consultar resultados de uma pergunta
       description: >
-        Só retorna resultados para quem já votou nessa pergunta. O campo
-        `percent` de cada resposta só aparece se `show_percent` da pergunta
-        estiver ativo.
+        Só retorna resultados para quem já votou nessa pergunta. Os campos
+        `votes` e `percent` de cada resposta, e `total_votes` no nível
+        superior, só aparecem se `show_percent` da pergunta estiver ativo —
+        do contrário nenhuma contagem é exposta, mesmo para quem já votou.
       parameters:
         - $ref: '#/components/parameters/QuestionIdPath'
       responses:
@@ -489,6 +490,7 @@ components:
           example: Lager
         votes:
           type: integer
+          description: Presente apenas quando show_percent da pergunta é true.
           example: 12
         description:
           type: string
@@ -562,6 +564,7 @@ components:
           example: Lager
         votes:
           type: integer
+          description: Presente apenas quando show_percent da pergunta é true.
           example: 12
         percent:
           type: number
@@ -570,17 +573,27 @@ components:
 
     VoteResults:
       type: object
+      description: >
+        Quando show_percent da pergunta é false, `answers` e `total_votes`
+        são omitidos e `message` é retornado em vez deles — nenhuma
+        contagem é exposta, mesmo para quem já votou.
       properties:
         show_percent:
           type: boolean
           example: true
         total_votes:
           type: integer
+          description: Presente apenas quando show_percent da pergunta é true.
           example: 20
         answers:
           type: array
+          description: Presente apenas quando show_percent da pergunta é true.
           items:
             $ref: '#/components/schemas/VoteResultAnswer'
+        message:
+          type: string
+          description: Presente apenas quando show_percent da pergunta é false.
+          example: Thank you for voting! Results for this question are not shown.
 
     CreatedResponse:
       type: object

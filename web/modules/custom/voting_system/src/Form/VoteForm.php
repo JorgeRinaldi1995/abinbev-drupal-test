@@ -8,34 +8,23 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\voting_system\Service\VoteService;
 use Drupal\Core\Session\AccountProxyInterface;
 
+/**
+ * Ballot form: one radio button per answer, submitted to VoteService.
+ */
 class VoteForm extends FormBase {
 
   /**
-   * The question ID to vote on.
-   *
-   * @var int|null
+   * The question being voted on (entity ID).
    */
   protected ?int $questionId;
 
   /**
-   * The rendered options for the answers.
-   *
-   * @var array
+   * Rendered answer options, keyed by assignment ID.
    */
   protected array $options;
 
-  /**
-   * The voting service.
-   *
-   * @var \Drupal\voting_system\Service\VoteService
-   */
   protected VoteService $voteService;
 
-  /**
-   * The current user.
-   *
-   * @var \Drupal\Core\Session\AccountProxyInterface
-   */
   protected AccountProxyInterface $currentUser;
 
   public function __construct(VoteService $voteService, AccountProxyInterface $currentUser) {
@@ -50,10 +39,16 @@ class VoteForm extends FormBase {
     );
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function getFormId(): string {
     return 'voting_system_vote_form';
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function buildForm(array $form, FormStateInterface $form_state, $question_id = NULL, $options = []): array {
     $this->questionId = $question_id;
     $this->options = $options;
@@ -79,6 +74,10 @@ class VoteForm extends FormBase {
 
     return $form;
   }
+
+  /**
+   * {@inheritdoc}
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $assignment_id = (int) $form_state->getValue('answer_id');
 
